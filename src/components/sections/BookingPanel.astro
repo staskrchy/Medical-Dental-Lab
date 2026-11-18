@@ -62,6 +62,8 @@ import data from '../../content/booking';
 </div>
 
 <script>
+  import { withBase } from '../../scripts/url';
+
   type Config = {
     services: { name: string; minutes: number }[];
     minutesLabel: string;
@@ -234,7 +236,7 @@ import data from '../../content/booking';
       opener = null;
       close();
       if (!document.querySelector('[data-contact-form]')) {
-        window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: '/#booking' }));
+        window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: withBase('/#booking') }));
         return;
       }
       window.dispatchEvent(new CustomEvent('mdl:booking-chosen', { detail: booking }));

@@ -74,7 +74,7 @@
       go(url, samePage, target);
     });
 
-    // Перехід з коду (напр. після відправки форми): window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: '/thank-you' }))
+    // Перехід з коду (напр. після відправки форми): window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: withBase('/thank-you') }))
     window.addEventListener('mdl:navigate', (e) => {
       const url = new URL((e as CustomEvent<string>).detail, location.href);
       if (reduced.matches || busy) return void (location.href = url.href);

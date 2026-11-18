@@ -1,3 +1,4 @@
+import { withBase } from '../scripts/url';
 import image from '../assets/images/instruments.png';
 
 export default {
@@ -12,7 +13,7 @@ export default {
   caption: 'Microscopic dental lab',
   tabs: [
     { label: 'Our services', href: '#services' },
-    { label: 'Specialists', href: '/team' },
+    { label: 'Specialists', href: withBase('/team') },
   ],
   image: { src: image, alt: 'Dental instruments in a coat pocket' },
 };

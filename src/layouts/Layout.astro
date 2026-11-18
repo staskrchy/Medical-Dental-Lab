@@ -3,13 +3,15 @@ import '../styles/global.css';
 import site from '../content/site.json';
 import PageTransition from '../components/ui/PageTransition.astro';
 import ScrollReveal from '../components/ui/ScrollReveal.astro';
+import { withBase } from '../scripts/url';
+import fontUrl from '../assets/fonts/PPAlteraCarve-Regular.otf?url';
 
 interface Props {
   title?: string;
 }
 const { title = site.title } = Astro.props;
 const pageUrl = new URL(Astro.url.pathname, Astro.site);
-const ogImage = new URL(site.ogImage, Astro.site);
+const ogImage = new URL(withBase(site.ogImage), Astro.site);
 ---
 
 <!doctype html>
@@ -18,12 +20,12 @@ const ogImage = new URL(site.ogImage, Astro.site);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={site.description} />
-    <link rel="preload" href="/fonts/PPAlteraCarve-Regular.otf" as="font" type="font/otf" crossorigin />
+    <link rel="preload" href={fontUrl} as="font" type="font/otf" crossorigin />
     <title>{title}</title>
 
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" href={withBase('/favicon.svg')} type="image/svg+xml" />
+    <link rel="icon" href={withBase('/favicon-32.png')} type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href={withBase('/apple-touch-icon.png')} />
 
     <!-- Прев'ю посилання в соцмережах і месенджерах -->
     <meta property="og:type" content="website" />

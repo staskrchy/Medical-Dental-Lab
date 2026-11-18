@@ -1,3 +1,4 @@
+import { withBase } from '../scripts/url';
 import header from './header';
 
 // TODO: тексти написані як чернетка (частину даних — адресу, e-mail, строки зберігання — вигадано).
@@ -125,5 +126,5 @@ export default {
       body: [`Questions about your data? Write to ${clinic.email} or call ${clinic.phone.label}.`],
     },
   ],
-  action: { label: 'Back to home', href: '/' },
+  action: { label: 'Back to home', href: withBase('/') },
 };

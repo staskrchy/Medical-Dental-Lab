@@ -50,6 +50,8 @@ const mobile = await getImage({ src: data.image.mobile, format: 'webp', width: 7
 </script>
 
 <script>
+  import { withBase } from '../../scripts/url';
+
   // Помилки полів: червоні лінія і текст після спроби відправити або після того, як поле покинули
   document.querySelectorAll<HTMLFormElement>('[data-contact-form]').forEach((form) => {
     const inputs = form.querySelectorAll<HTMLInputElement>('input');
@@ -78,7 +80,7 @@ const mobile = await getImage({ src: data.image.mobile, format: 'webp', width: 7
       const request = Object.fromEntries(new FormData(form) as unknown as Iterable<[string, string]>);
       sessionStorage.setItem('mdl-request', JSON.stringify(request));
       sessionStorage.removeItem('mdl-booking');
-      window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: '/thank-you' }));
+      window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: withBase('/thank-you') }));
     };
 
     // Дата могла бути обрана на іншій сторінці (Select Date → Continue)

@@ -1,3 +1,4 @@
+import { withBase } from '../scripts/url';
 import doctor from '../assets/images/contact-doctor.png';
 import doctorMobile from '../assets/images/contact-doctor-mobile.png';
 
@@ -12,7 +13,7 @@ export default {
   ],
   consent: {
     before: 'By submitting, you agree to our ',
-    link: { label: 'Privacy Policy', href: '/privacy-policy' },
+    link: { label: 'Privacy Policy', href: withBase('/privacy-policy') },
     after: ' and the processing your personal data.',
   },
   submit: 'Reserve Your Visit',

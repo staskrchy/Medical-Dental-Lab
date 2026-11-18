@@ -1,3 +1,4 @@
+import { withBase } from '../scripts/url';
 import logo from '../assets/images/footer/logo-mdl.png';
 import aiIcons from '../assets/images/footer/ai-icons.svg';
 import mail from '../assets/images/footer/mail.svg';
@@ -26,7 +27,7 @@ export default {
     { label: '© 2026 Microscopic Dental Lab' },
     { label: 'All Rights Reserved.' },
     { label: '10-Year Clinical Warranty' },
-    { label: 'Privacy Policy', href: '/privacy-policy' },
+    { label: 'Privacy Policy', href: withBase('/privacy-policy') },
     { label: 'Terms of Treatment', href: '#' },
   ],
   wordmark: ['Microscopic', 'Dental Lab'],
