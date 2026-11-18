@@ -1,0 +1,319 @@
+---
+import { Image } from 'astro:assets';
+import EditorialAction from '../ui/EditorialAction.astro';
+import data from '../../content/results';
+const { compare } = data;
+---
+
+<section class="results">
+  <!-- Повзунок «до / після»: зверху фото «після», під ним «до» -->
+  <div class="compare" data-reveal data-compare style={`--pos: ${compare.start}%`}>
+    <Image src={compare.before.src} alt={compare.before.alt} class="compare-img" quality={90} />
+    <Image src={compare.after.src} alt={compare.after.alt} class="compare-img compare-after" quality={90} />
+    <span class="compare-label compare-label-after">{compare.after.label}</span>
+    <span class="compare-label compare-label-before">{compare.before.label}</span>
+
+    <!-- Лінія-«струна»: вигинається за кружечком, коли його тягнуть (малює скрипт) -->
+    <svg class="string" aria-hidden="true"><path data-string /></svg>
+
+    <span class="handle" aria-hidden="true">
+      <span class="handle-knob">
+        <svg viewBox="0 0 32 20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 1 1.3 8.3a2.4 2.4 0 0 0 0 3.4L9 19M23 1l7.7 7.3a2.4 2.4 0 0 1 0 3.4L23 19" />
+        </svg>
+      </span>
+    </span>
+
+    <input
+      class="compare-range"
+      type="range"
+      min="0"
+      max="100"
+      step="0.1"
+      value={compare.start}
+      aria-label={compare.handleLabel}
+      data-compare-range
+    />
+  </div>
+
+  <div class="info">
+    <p class="label" data-reveal>{data.label}</p>
+    <h2 class="title" data-reveal>{data.title}</h2>
+    <p class="text" data-reveal>{data.text}</p>
+
+    <dl class="details" data-reveal-group>
+      {data.details.map((d) => (
+        <div class="row">
+          <dt>{d.label}</dt>
+          <dd class:list={{ strong: d.strong }}>{d.value}</dd>
+        </div>
+      ))}
+    </dl>
+
+    <div class="action" data-reveal>
+      <EditorialAction label={data.action.label} href={data.action.href} />
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+
+  // «Натягнута струна»: кружечок іде за пальцем/мишкою одразу, а кінці лінії (верх і низ) — з запізненням
+  // на пружині. Тому під час руху лінія вигинається, а після відпускання трохи пружинить і випрямляється.
+  // Край фото «after» повторює вигин лінії.
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  document.querySelectorAll<HTMLElement>('[data-compare]').forEach((box) => {
+    const range = box.querySelector<HTMLInputElement>('[data-compare-range]');
+    const after = box.querySelector<HTMLElement>('.compare-after');
+    const string = box.querySelector<SVGPathElement>('[data-string]');
+    if (!range || !after || !string) return;
+
+    const state = { target: Number(range.value), lag: Number(range.value) };
+    box.classList.add('is-elastic');
+
+    const draw = () => {
+      const w = box.clientWidth;
+      const h = box.clientHeight;
+      const xT = (w * state.target) / 100; // де кружечок
+      // Кінці лінії відстають від кружечка не більше ніж на 4% ширини — легкий вигин, не сильний
+      const maxBend = w * 0.04;
+      const xL = xT - gsap.utils.clamp(-maxBend, maxBend, xT - (w * state.lag) / 100);
+      const ctrl = 2 * xT - xL; // контрольна точка, щоб крива проходила рівно через кружечок
+      const curve = `M${xL} 0 Q${ctrl} ${h / 2} ${xL} ${h}`;
+      string.setAttribute('d', curve);
+      after.style.clipPath = `path('${curve} L0 ${h} L0 0 Z')`;
+    };
+
+    // Пружина: невеликий «відскок» (elastic) при наздоганянні
+    const lagTo = reduced
+      ? (v: number) => { state.lag = v; draw(); }
+      : gsap.quickTo(state, 'lag', { duration: 0.55, ease: 'elastic.out(1, 0.65)', onUpdate: draw });
+
+    range.addEventListener('input', () => {
+      state.target = Number(range.value);
+      box.style.setProperty('--pos', `${state.target}%`);
+      lagTo(state.target);
+      draw();
+    });
+    new ResizeObserver(draw).observe(box);
+    draw();
+  });
+</script>
+
+<style>
+  /* Мобільний (макет: 7541–8894 px): повзунок на всю ширину, нижче текст і таблиця стовпчиком */
+  .results {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-soft);
+    color: var(--text-primary);
+  }
+
+  /* ---------- Повзунок «до / після» ---------- */
+  .compare {
+    position: relative;
+    aspect-ratio: 910 / 865; /* ті самі пропорції, що й у мобільному макеті (375 × 357) */
+    overflow: hidden;
+    user-select: none;
+  }
+  .compare-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .compare-after { clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
+  .compare-label {
+    position: absolute;
+    top: var(--space-12);
+    font-size: var(--fs-14);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-wide);
+    text-transform: lowercase;
+    text-decoration: underline;
+    text-decoration-thickness: var(--border-width);
+    text-underline-offset: 0.15em;
+    color: var(--text-inverse);
+    pointer-events: none;
+  }
+  .compare-label-after { left: var(--space-12); }
+  .compare-label-before { right: var(--space-12); }
+
+  .handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: var(--pos);
+    width: 1px;
+    transform: translateX(-50%);
+    background: var(--color-neutral-0);
+    pointer-events: none;
+  }
+  /* Лінія-«струна» (SVG): коли працює скрипт, пряма лінія ручки ховається, малюється крива */
+  .string {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    display: none;
+  }
+  .string path {
+    fill: none;
+    stroke: var(--color-neutral-0);
+    stroke-width: 1px;
+  }
+  .compare.is-elastic .string { display: block; }
+  .compare.is-elastic .handle { background: none; }
+  .compare.is-elastic .handle-knob { transition: transform var(--duration) var(--ease); }
+  .compare.is-elastic:active .handle-knob { transform: translate(-50%, -50%) scale(1.12); } /* «схопили» кружечок */
+  .handle-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    place-items: center;
+    width: calc(var(--space-48) + 3px); /* 51px з макета */
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    border: var(--border-width) solid var(--color-neutral-0);
+    border-radius: 50%;
+    background: color-mix(in srgb, var(--color-black) 43%, transparent);
+    backdrop-filter: blur(var(--space-12));
+    color: var(--color-neutral-0);
+    transition: transform var(--duration) var(--ease);
+  }
+  .handle-knob svg { width: var(--space-24); }
+  .compare:hover .handle-knob,
+  .compare:focus-within .handle-knob { transform: translate(-50%, -50%) scale(1.08); }
+
+  /* Невидимий нативний range поверх фото: перетягування мишею, пальцем і з клавіатури */
+  .compare-range {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: ew-resize;
+    appearance: none;
+    touch-action: pan-y; /* вертикальна прокрутка сторінки не ламається */
+  }
+
+  /* ---------- Текст і таблиця ---------- */
+  .info {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-24) var(--space-24) calc(var(--space-120) + var(--space-16));
+  }
+  .label {
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: 0.09em;
+    text-transform: lowercase;
+    color: var(--text-link-muted);
+  }
+  .title {
+    margin-top: var(--space-56);
+    font-size: var(--fs-32);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .text {
+    margin-top: var(--space-16);
+    font-size: var(--fs-12);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    color: var(--text-placeholder);
+    text-wrap: pretty;
+  }
+
+  .details {
+    margin-top: var(--space-56);
+    border-top: 0.5px solid var(--color-slate-400);
+  }
+  .row {
+    display: flex;
+    flex-direction: column;
+    padding-block: var(--space-24);
+    border-bottom: 0.5px solid var(--color-slate-400);
+  }
+  .row dt {
+    font-size: var(--fs-24);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+  }
+  .row dd {
+    font-size: var(--fs-12);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    color: var(--text-placeholder);
+  }
+  .row dd.strong {
+    font-size: var(--fs-20);
+    color: color-mix(in srgb, var(--text-primary) 50%, transparent);
+  }
+
+  .action {
+    margin-top: calc(var(--space-96) - 2px);
+    text-align: center;
+  }
+
+  /* Десктоп (макет: блок 7635–8593 px) */
+  @media (min-width: 1024px) {
+    .results {
+      display: grid;
+      grid-template-columns: 910fr 906fr; /* колонки з макета */
+      gap: var(--space-24);
+      padding: var(--space-44) var(--gutter) var(--space-48);
+    }
+
+    .compare-label {
+      top: var(--space-32);
+      font-size: var(--fs-32);
+    }
+    .compare-label-after { left: var(--space-24); }
+    .compare-label-before { right: var(--space-24); }
+    .handle { width: 2px; }
+    .string path { stroke-width: 2px; }
+    .handle-knob {
+      width: calc(var(--space-64) + var(--space-8) + 1px); /* 73px з макета */
+      border-width: 2px;
+      backdrop-filter: blur(var(--space-16));
+    }
+    .handle-knob svg { width: var(--space-32); }
+
+    .info { padding: 0; }
+    .label { font-size: var(--fs-20); letter-spacing: var(--ls-wide); }
+    .title {
+      max-width: 37rem; /* 592px з макета */
+      margin-top: var(--space-16);
+      font-size: var(--fs-64);
+    }
+    .text {
+      max-width: 40rem; /* 637px з макета */
+      margin-top: var(--space-24);
+      font-size: var(--fs-20);
+    }
+
+    .details { margin-top: auto; }
+    .row {
+      display: grid;
+      grid-template-columns: 210fr 696fr; /* колонки з макета */
+      align-items: baseline;
+      padding-block: var(--space-32);
+    }
+    .row dd { font-size: var(--fs-20); }
+    .row dd.strong { color: var(--text-primary); }
+
+    .action {
+      margin-top: var(--space-32);
+      text-align: left;
+    }
+  }
+</style>

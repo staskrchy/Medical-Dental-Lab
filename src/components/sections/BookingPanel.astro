@@ -1,0 +1,549 @@
+---
+// Панель запису (макет: «Десктоп календар запису», вузол 111:2). Відкривається кнопкою з data-booking-open.
+import data from '../../content/booking';
+---
+
+<div class="booking" data-booking hidden>
+  <div class="backdrop" data-booking-close></div>
+
+  <aside class="panel" role="dialog" aria-modal="true" aria-labelledby="booking-title" data-config={JSON.stringify(data)}>
+    <header class="head">
+      <p class="head-label">{data.label}</p>
+      <h2 class="head-title" id="booking-title">{data.title}</h2>
+      <p class="head-text">{data.text}</p>
+      <button class="close" type="button" aria-label={data.closeLabel} data-booking-close>×</button>
+    </header>
+
+    <div class="body">
+      <!-- Послуга -->
+      <section class="block">
+        <p class="caption">{data.serviceLabel}</p>
+        <label class="service">
+          <span class="service-name" data-service-name></span>
+          <span class="service-caret" aria-hidden="true">⌄</span>
+          <span class="service-time" data-service-time></span>
+          <select class="service-select" aria-label={data.serviceLabel} data-service-select>
+            {data.services.map((s, i) => <option value={i}>{s.name}</option>)}
+          </select>
+        </label>
+        <p class="caption caption-soft">{data.otherServicesLabel}</p>
+        <div class="chips" data-service-chips></div>
+      </section>
+
+      <!-- Календар -->
+      <section class="block calendar">
+        <div class="month">
+          <p class="month-title" data-month-title aria-live="polite"></p>
+          <button class="nav" type="button" aria-label={data.prevMonthLabel} data-month-prev>←</button>
+          <button class="nav" type="button" aria-label={data.nextMonthLabel} data-month-next>→</button>
+        </div>
+        <div class="weekdays" aria-hidden="true">{data.weekdays.map((d) => <span>{d}</span>)}</div>
+        <div class="days" data-days></div>
+      </section>
+
+      <!-- Час -->
+      <section class="block">
+        <div class="times-head">
+          <p class="times-date" data-times-date></p>
+          <p class="times-zone">{data.timezoneLabel}</p>
+        </div>
+        <div class="times" data-times></div>
+      </section>
+
+      <!-- Підсумок -->
+      <section class="summary">
+        <p class="summary-text" data-summary></p>
+        <button class="continue" type="button" data-booking-continue>
+          <span>{data.continueLabel}</span><span aria-hidden="true">→</span>
+        </button>
+      </section>
+    </div>
+  </aside>
+</div>
+
+<script>
+  type Config = {
+    services: { name: string; minutes: number }[];
+    minutesLabel: string;
+    times: string[];
+    closedWeekdays: number[];
+    locale: string;
+  };
+
+  const root = document.querySelector<HTMLElement>('[data-booking]');
+  const panel = root?.querySelector<HTMLElement>('.panel');
+  if (root && panel) {
+    const cfg: Config = JSON.parse(panel.dataset.config || '{}');
+    const $ = <T extends Element>(sel: string) => panel.querySelector<T>(sel)!;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isOpenDay = (d: Date) => d >= today && !cfg.closedWeekdays.includes(d.getDay());
+    const firstOpenDay = () => {
+      const d = new Date(today);
+      while (!isOpenDay(d)) d.setDate(d.getDate() + 1);
+      return d;
+    };
+
+    const state = {
+      service: 0,
+      date: firstOpenDay(),
+      month: new Date(today.getFullYear(), today.getMonth(), 1),
+      time: cfg.times[0],
+    };
+
+    const fmt = (opts: Intl.DateTimeFormatOptions, d: Date) => new Intl.DateTimeFormat(cfg.locale, opts).format(d);
+    const addMinutes = (time: string, min: number) => {
+      const [h, m] = time.split(':').map(Number);
+      const t = h * 60 + m + min;
+      return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+    };
+    const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+
+    const button = (cls: string, text: string, onClick?: () => void, disabled = false) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = cls;
+      b.textContent = text;
+      b.disabled = disabled;
+      if (onClick) b.addEventListener('click', onClick);
+      return b;
+    };
+
+    function renderService() {
+      const s = cfg.services[state.service];
+      $('[data-service-name]').textContent = s.name;
+      $('[data-service-time]').textContent = `${s.minutes} ${cfg.minutesLabel}`;
+      $<HTMLSelectElement>('[data-service-select]').value = String(state.service);
+      $('[data-service-chips]').replaceChildren(
+        ...cfg.services
+          .map((x, i) => ({ x, i }))
+          .filter(({ i }) => i !== state.service)
+          .map(({ x, i }) => button('chip', x.name, () => { state.service = i; render(); })),
+      );
+    }
+
+    function renderCalendar() {
+      const { month } = state;
+      $('[data-month-title]').textContent = fmt({ month: 'long', year: 'numeric' }, month);
+      $<HTMLButtonElement>('[data-month-prev]').disabled =
+        month <= new Date(today.getFullYear(), today.getMonth(), 1);
+
+      // Сітка з понеділка: 6 тижнів, дні сусідніх місяців — сірі й неактивні
+      const start = new Date(month);
+      start.setDate(1 - ((month.getDay() + 6) % 7));
+      const cells = Array.from({ length: 42 }, (_, i) => {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const inMonth = d.getMonth() === month.getMonth();
+        const open = inMonth && isOpenDay(d);
+        const b = button('day', String(d.getDate()), () => { state.date = d; render(); }, !open);
+        if (!inMonth) b.classList.add('day-adjacent');
+        if (sameDay(d, state.date)) {
+          b.classList.add('is-selected');
+          b.setAttribute('aria-pressed', 'true');
+        }
+        b.setAttribute('aria-label', fmt({ weekday: 'long', day: 'numeric', month: 'long' }, d));
+        return b;
+      });
+      $('[data-days]').replaceChildren(...cells);
+    }
+
+    function renderTimes() {
+      $('[data-times-date]').textContent = fmt({ weekday: 'long', day: 'numeric', month: 'long' }, state.date);
+      $('[data-times]').replaceChildren(
+        ...cfg.times.map((t) => {
+          const b = button('time', t, () => { state.time = t; render(); });
+          if (t === state.time) {
+            b.classList.add('is-selected');
+            b.setAttribute('aria-pressed', 'true');
+          }
+          return b;
+        }),
+      );
+    }
+
+    function renderSummary() {
+      const end = addMinutes(state.time, cfg.services[state.service].minutes);
+      $('[data-summary]').textContent =
+        `${fmt({ day: 'numeric', month: 'short', year: 'numeric' }, state.date)}  /  ${state.time}–${end}`;
+    }
+
+    function render() {
+      renderService();
+      renderCalendar();
+      renderTimes();
+      renderSummary();
+    }
+
+    $<HTMLSelectElement>('[data-service-select]').addEventListener('change', (e) => {
+      state.service = Number((e.target as HTMLSelectElement).value);
+      render();
+    });
+    const shiftMonth = (n: number) => {
+      state.month = new Date(state.month.getFullYear(), state.month.getMonth() + n, 1);
+      renderCalendar();
+    };
+    $('[data-month-prev]').addEventListener('click', () => shiftMonth(-1));
+    $('[data-month-next]').addEventListener('click', () => shiftMonth(1));
+
+    // ---------- Відкриття / закриття ----------
+    let opener: HTMLElement | null = null;
+    const open = (trigger: HTMLElement) => {
+      opener = trigger;
+      render();
+      root.hidden = false;
+      requestAnimationFrame(() => root.classList.add('is-open'));
+      $<HTMLButtonElement>('.close').focus();
+    };
+    const close = () => {
+      root.classList.remove('is-open');
+      const hide = (e: TransitionEvent) => {
+        if (e.target !== panel) return;
+        root.hidden = true;
+        panel.removeEventListener('transitionend', hide);
+      };
+      panel.addEventListener('transitionend', hide);
+      opener?.focus();
+    };
+
+    document.querySelectorAll<HTMLElement>('[data-booking-open]').forEach((el) =>
+      el.addEventListener('click', (e) => { e.preventDefault(); open(el); }),
+    );
+    // Фон не прокручується: блокуємо колесо й свайп на затемненні (без overflow на html, щоб нічого не стрибало)
+    const backdrop = root.querySelector<HTMLElement>('.backdrop');
+    ['wheel', 'touchmove'].forEach((type) => backdrop?.addEventListener(type, (e) => e.preventDefault(), { passive: false }));
+
+    root.querySelectorAll('[data-booking-close]').forEach((el) => el.addEventListener('click', close));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && root.classList.contains('is-open')) close(); });
+
+    // Форма контактів просить відкрити календар (людина спершу заповнила контакти)
+    window.addEventListener('mdl:open-booking', () => open(document.activeElement as HTMLElement));
+
+    // Continue: віддаємо вибір формі контактів. Далі вирішує форма:
+    // контакти вже заповнені → сторінка подяки, ще ні → прокрутка до форми
+    $('[data-booking-continue]').addEventListener('click', () => {
+      const d = state.date;
+      const booking = {
+        service: cfg.services[state.service].name,
+        date: [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-'),
+        time: state.time,
+      };
+      // Зберігаємо у вкладці, щоб вибір не загубився при переході на головну з інших сторінок
+      sessionStorage.setItem('mdl-booking', JSON.stringify(booking));
+      opener = null;
+      close();
+      if (!document.querySelector('[data-contact-form]')) {
+        window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: '/#booking' }));
+        return;
+      }
+      window.dispatchEvent(new CustomEvent('mdl:booking-chosen', { detail: booking }));
+    });
+  }
+</script>
+
+<style>
+  .booking {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+  }
+  .booking[hidden] { display: none; }
+
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--surface-inverse) 30%, transparent);
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease);
+  }
+  .panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: min(100%, 41.5625rem); /* 665px з макета */
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain; /* прокрутка панелі не «перетікає» на сторінку */
+    background: var(--surface-default);
+    color: var(--text-primary);
+    transform: translateX(100%);
+    transition: transform var(--duration) var(--ease);
+  }
+  .booking.is-open .backdrop { opacity: 1; }
+  .booking.is-open .panel { transform: none; }
+
+  /* :where — нульова вага, щоб не перебивати кольори конкретних кнопок (Continue, хрестик) */
+  :where(.panel) :global(button) { font: inherit; color: inherit; cursor: pointer; }
+  :where(.panel) :global(button:disabled) { cursor: default; }
+
+  /* ---------- Шапка ---------- */
+  .head {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-24) var(--space-16);
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+    line-height: var(--lh-normal);
+    letter-spacing: var(--ls-tight);
+  }
+  .head-label {
+    font-size: var(--fs-14);
+    color: var(--text-accent);
+  }
+  .head-title {
+    margin-top: var(--space-16);
+    font-size: var(--fs-32);
+    font-weight: 400;
+  }
+  .head-text {
+    margin-top: var(--space-12);
+    font-size: var(--fs-16);
+  }
+  .close {
+    position: absolute;
+    top: var(--space-12);
+    right: var(--space-16);
+    width: var(--space-44); /* 44 × 44 — зручно для пальця */
+    height: var(--space-44);
+    border: 0;
+    background: none;
+    font-size: var(--fs-25);
+    line-height: 1;
+    transition: transform var(--duration) var(--ease);
+  }
+  .close:hover,
+  .close:focus-visible { transform: rotate(90deg); }
+
+  /* ---------- Тіло ---------- */
+  .body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-24);
+    padding: var(--space-24) var(--space-16);
+    line-height: var(--lh-normal);
+    letter-spacing: var(--ls-tight);
+  }
+  .caption {
+    font-size: var(--fs-11);
+    text-transform: uppercase;
+    color: var(--text-booking-secondary);
+  }
+  .caption-soft {
+    margin-top: var(--space-12);
+    font-size: var(--fs-14);
+    text-transform: none;
+  }
+
+  .service {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: var(--space-16);
+    margin-top: var(--space-12);
+    padding: var(--space-12) var(--space-16);
+    border: var(--border-width) solid var(--border-control);
+    transition: border-color var(--duration) var(--ease);
+  }
+  .service:hover,
+  .service:focus-within { border-color: var(--border-selected); }
+  .service-name { font-size: var(--fs-21); }
+  .service-caret {
+    font-size: var(--fs-23);
+    transform: translateY(-0.25em); /* символ ⌄ сидить низько, піднімаємо до середини рядка */
+  }
+  .service-time {
+    margin-left: auto;
+    font-size: var(--fs-14);
+    color: var(--text-booking-secondary);
+  }
+  /* Нативний select поверх: доступний і з клавіатури */
+  .service-select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .chips {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-8);
+    margin-top: var(--space-12);
+  }
+  .panel :global(.chip),
+  .nav,
+  .panel :global(.time) {
+    border: var(--border-width) solid var(--border-control);
+    background: var(--surface-default);
+    transition: border-color var(--duration) var(--ease), background-color var(--duration) var(--ease), color var(--duration) var(--ease);
+  }
+  .panel :global(.chip) {
+    height: var(--space-44);
+    font-size: var(--fs-16);
+  }
+  /* Непарна остання кнопка — на всю ширину, як Orthodontics у мобільному макеті */
+  .panel :global(.chip:last-child:nth-child(odd)) { grid-column: 1 / -1; }
+  .panel :global(.chip:hover),
+  .nav:not(:disabled):hover,
+  .panel :global(.time:hover) { border-color: var(--border-selected); }
+
+  /* ---------- Календар ---------- */
+  .month {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+  }
+  .month-title {
+    margin-right: auto;
+    font-size: var(--fs-26);
+  }
+  .nav {
+    width: var(--space-44);
+    height: var(--space-44);
+    font-size: var(--fs-21);
+  }
+  .nav:disabled { color: var(--text-unavailable); }
+  .weekdays,
+  .days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    justify-items: center;
+  }
+  .weekdays {
+    margin-top: var(--space-16);
+    font-size: var(--fs-14);
+    color: var(--text-booking-secondary);
+  }
+  .days {
+    row-gap: 2px;
+    margin-top: var(--space-12);
+  }
+  .panel :global(.day) {
+    width: 3.0625rem; /* 49 × 44 px з мобільного макета */
+    height: var(--space-44);
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: var(--fs-18);
+    transition: background-color var(--duration) var(--ease), color var(--duration) var(--ease);
+  }
+  .panel :global(.day:not(:disabled):hover) { background: var(--surface-soft); }
+  .panel :global(.day:disabled) { color: var(--text-unavailable); }
+  .panel :global(.day.is-selected),
+  .panel :global(.time.is-selected) {
+    border-color: var(--border-selected);
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+  }
+
+  /* ---------- Час ---------- */
+  .times-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+  .times-date { font-size: var(--fs-22); }
+  .times-zone {
+    font-size: var(--fs-14);
+    color: var(--text-booking-secondary);
+  }
+  .times {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-8);
+    margin-top: var(--space-16);
+  }
+  .panel :global(.time) {
+    height: var(--space-44);
+    font-size: var(--fs-18);
+  }
+
+  /* ---------- Підсумок ---------- */
+  .summary {
+    padding-top: var(--space-16);
+    border-top: var(--border-width) solid var(--border-control);
+  }
+  .summary-text {
+    font-size: var(--fs-16);
+    white-space: pre;
+  }
+  .continue {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    height: var(--space-48);
+    margin-top: var(--space-12);
+    padding: 0 var(--space-16);
+    border: 0;
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+    font-size: var(--fs-22);
+  }
+  .continue span:last-child { transition: transform var(--duration) var(--ease); }
+  .continue:hover span:last-child,
+  .continue:focus-visible span:last-child { transform: translateX(var(--space-8)); }
+
+  /* Десктоп (макет: «Десктоп календар запису», 111:2) */
+  @media (min-width: 1024px) {
+    .head { padding: var(--space-24) var(--space-32) var(--space-32); }
+    .head-title { font-size: var(--fs-42); }
+    .head-text { font-size: var(--fs-19); }
+    .close {
+      top: var(--space-16);
+      right: var(--space-32);
+      width: var(--space-32);
+      height: var(--space-32);
+    }
+    .body {
+      gap: var(--space-32);
+      padding: var(--space-24) var(--space-32) var(--space-32);
+    }
+    .service-name { font-size: var(--fs-26); }
+    .service-time { font-size: var(--fs-16); }
+    .chips {
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-12);
+    }
+    .panel :global(.chip) {
+      height: var(--space-40);
+      font-size: var(--fs-17);
+    }
+    .panel :global(.chip:last-child:nth-child(odd)) { grid-column: auto; }
+    .month-title { font-size: var(--fs-29); }
+    .nav {
+      width: var(--space-40);
+      height: calc(var(--space-32) + 2px);
+    }
+    .weekdays { font-size: var(--fs-15); }
+    .panel :global(.day) {
+      width: 4.125rem; /* 66 × 36 px з макета */
+      height: calc(var(--space-32) + var(--space-4));
+      font-size: var(--fs-20);
+    }
+    .times-head {
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0;
+    }
+    .times-date { font-size: var(--fs-24); }
+    .times {
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-16);
+    }
+    .panel :global(.time) {
+      height: var(--space-48);
+      font-size: var(--fs-19);
+    }
+    .summary-text { font-size: var(--fs-18); }
+    .continue {
+      height: calc(var(--space-56) + 2px);
+      margin-top: var(--space-24);
+      font-size: var(--fs-25);
+    }
+  }
+</style>

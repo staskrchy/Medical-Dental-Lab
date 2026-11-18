@@ -1,0 +1,43 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/sections/Header.astro';
+import TeamHero from '../components/sections/TeamHero.astro';
+import TeamGrid from '../components/sections/TeamGrid.astro';
+import Footer from '../components/sections/Footer.astro';
+import BookingPanel from '../components/sections/BookingPanel.astro';
+import team from '../content/team';
+---
+
+<Layout title={team.meta.title}>
+  <Header />
+  <main>
+    <TeamHero />
+    <TeamGrid />
+  </main>
+  <Footer />
+  <BookingPanel />
+</Layout>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  // «Шари»: перший екран фіксується, а блок команди наїжджає на нього знизу. Футер — звичайний
+  gsap.matchMedia().add('(min-width: 1024px) and (prefers-reduced-motion: no-preference)', () => {
+    ['.team-hero'].forEach((selector) => {
+      const block = document.querySelector<HTMLElement>(selector);
+      if (!block) return;
+      ScrollTrigger.create({
+        trigger: block,
+        // Високий блок спершу докручуємо до низу, і лише тоді фіксуємо
+        start: () => (block.offsetHeight > innerHeight ? 'bottom bottom' : 'top top'),
+        end: () => `+=${Math.min(block.offsetHeight, innerHeight)}`,
+        pin: true,
+        pinSpacing: false,
+        invalidateOnRefresh: true,
+      });
+    });
+  });
+</script>

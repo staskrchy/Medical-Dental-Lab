@@ -1,0 +1,267 @@
+---
+import EditorialAction from '../ui/EditorialAction.astro';
+import data from '../../content/privacy';
+const pad = (n: number) => String(n + 1).padStart(2, '0');
+---
+
+<section class="privacy">
+  <header class="head" data-reveal>
+    <p class="label">{data.label}</p>
+    <h1 class="title">{data.title}</h1>
+    <p class="updated">{data.updated}</p>
+    <span class="line" aria-hidden="true"></span>
+    <p class="intro">{data.intro}</p>
+  </header>
+
+  <div class="layout">
+    <!-- Зміст: на десктопі «липне» ліворуч під час прокрутки -->
+    <nav class="toc" data-reveal aria-label={data.tocLabel}>
+      <p class="toc-label">{data.tocLabel}</p>
+      <ol class="toc-list">
+        {data.sections.map((s, i) => (
+          <li>
+            <a class="toc-link" href={`#${s.id}`} data-no-transition>
+              <span class="num">{pad(i)}</span>{s.title}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+
+    <div class="content">
+      {data.sections.map((s, i) => (
+        <article class="item" data-reveal id={s.id}>
+          <p class="num">{pad(i)}</p>
+          <h2 class="item-title">{s.title}</h2>
+          {s.body?.map((p) => <p class="p">{p}</p>)}
+          {s.list && <ul class="list">{s.list.map((li) => <li>{li}</li>)}</ul>}
+          {s.after && <p class="p">{s.after}</p>}
+        </article>
+      ))}
+
+      <div class="action">
+        <EditorialAction label={data.action.label} href={data.action.href} />
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Зміст: плавна прокрутка до розділу (без переходу квадратами) і підсвітка поточного розділу
+  const links = document.querySelectorAll<HTMLAnchorElement>('.privacy .toc-link');
+  links.forEach((link) =>
+    link.addEventListener('click', (e) => {
+      const target = document.querySelector(link.hash);
+      if (!target) return;
+      e.preventDefault();
+      target.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      history.replaceState(null, '', link.hash);
+    }),
+  );
+  const observer = new IntersectionObserver(
+    (entries) =>
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        links.forEach((l) => l.classList.toggle('is-active', l.hash === `#${entry.target.id}`));
+      }),
+    { rootMargin: '-30% 0px -60% 0px' },
+  );
+  document.querySelectorAll('.privacy .item').forEach((el) => observer.observe(el));
+</script>
+
+<style>
+  /* Мобільний: шапка, зміст, розділи один під одним */
+  .privacy {
+    padding: calc(var(--space-120) + var(--space-8)) var(--space-24) var(--space-96);
+    background: var(--surface-default);
+    color: var(--text-primary);
+  }
+
+  .label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: 0.09em;
+    color: var(--text-link-muted);
+  }
+  .label::before {
+    content: '';
+    width: var(--space-16);
+    border-top: var(--border-width) solid currentColor;
+  }
+  .title {
+    margin-top: var(--space-24);
+    font-size: var(--fs-display);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .updated {
+    margin-top: var(--space-16);
+    font-size: var(--fs-14);
+    color: var(--text-secondary);
+  }
+  .line {
+    display: block;
+    width: var(--space-120);
+    margin-top: var(--space-32);
+    border-top: 0.5px solid var(--border-neutral-325);
+  }
+  .intro {
+    max-width: 50rem;
+    margin-top: var(--space-24);
+    font-size: var(--fs-16);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    text-wrap: pretty;
+  }
+
+  .layout { margin-top: var(--space-56); }
+
+  /* ---------- Зміст ---------- */
+  .toc {
+    padding: var(--space-24) var(--space-16);
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+  }
+  .toc-label {
+    font-size: var(--fs-14);
+    color: var(--text-accent);
+  }
+  .toc-list {
+    margin-top: var(--space-16);
+    list-style: none;
+  }
+  .toc-link {
+    display: flex;
+    gap: var(--space-12);
+    padding-block: var(--space-8);
+    font-size: var(--fs-16);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    color: color-mix(in srgb, var(--text-inverse) 60%, transparent);
+    transition: color var(--duration) var(--ease);
+  }
+  .toc-link:hover,
+  .toc-link:focus-visible,
+  .toc-link.is-active { color: var(--text-inverse); }
+  .toc .num { color: var(--text-accent); }
+
+  /* ---------- Розділи ---------- */
+  .content { margin-top: var(--space-48); }
+  .item {
+    padding-block: var(--space-32);
+    border-top: 0.5px solid var(--color-slate-400);
+    scroll-margin-top: var(--space-24);
+  }
+  .item .num {
+    font-family: var(--font-mono);
+    font-size: var(--fs-12);
+    color: var(--text-link-muted);
+  }
+  .item-title {
+    margin-top: var(--space-12);
+    font-size: var(--fs-24);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .p,
+  .list {
+    max-width: 48rem;
+    margin-top: var(--space-16);
+    font-size: var(--fs-16);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    color: var(--text-ink-800);
+    text-wrap: pretty;
+  }
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding-left: 0;
+    list-style: none;
+  }
+  .list li {
+    position: relative;
+    padding-left: var(--space-24);
+  }
+  .list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.75em;
+    width: var(--space-12);
+    border-top: var(--border-width) solid var(--text-link-muted);
+  }
+  .action {
+    --action-fs: var(--fs-32);
+    margin-top: var(--space-48);
+    padding-top: var(--space-48);
+    border-top: 0.5px solid var(--color-slate-400);
+  }
+
+  /* Десктоп: зміст ліворуч (липкий), розділи праворуч */
+  @media (min-width: 1024px) {
+    .privacy { padding: calc(var(--space-120) * 2) var(--gutter) var(--space-120); }
+    .label {
+      gap: var(--space-12);
+      font-size: var(--fs-20);
+      letter-spacing: var(--ls-wide);
+    }
+    .label::before { width: var(--space-24); }
+    .title { margin-top: var(--space-32); }
+    .updated {
+      margin-top: var(--space-24);
+      font-size: var(--fs-18);
+    }
+    .line { margin-top: var(--space-48); }
+    .intro {
+      margin-top: var(--space-32);
+      font-size: var(--fs-24);
+      line-height: var(--lh-relaxed);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr; /* розділи починаються рівно по центральній вертикалі сторінки */
+      gap: 0;
+      align-items: start;
+      margin-top: var(--space-96);
+    }
+    .toc {
+      position: sticky;
+      top: var(--space-32);
+      max-width: 30rem; /* 480px */
+      padding: var(--space-32);
+    }
+    .toc-link {
+      padding-block: var(--space-12);
+      font-size: var(--fs-18);
+    }
+
+    .content { margin-top: 0; }
+    .item {
+      padding-block: var(--space-48);
+      scroll-margin-top: var(--space-32);
+    }
+    .item:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+    .item .num { font-size: var(--fs-14); }
+    .item-title {
+      margin-top: var(--space-16);
+      font-size: var(--fs-40);
+    }
+    .p,
+    .list {
+      margin-top: var(--space-24);
+      font-size: var(--fs-20);
+    }
+    .action { --action-fs: var(--fs-36); }
+  }
+</style>

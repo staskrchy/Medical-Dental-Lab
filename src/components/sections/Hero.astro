@@ -1,0 +1,137 @@
+---
+import { Image, getImage } from 'astro:assets';
+import EditorialAction from '../ui/EditorialAction.astro';
+import hero from '../../content/hero';
+
+// Мобільний кадр — окремий файл (кроп з мобільного макета), браузер завантажить лише потрібний
+const mobile = await getImage({ src: hero.image.mobile, format: 'webp', width: 724 });
+---
+
+<section class="hero">
+  <h1 class="title">{hero.title}</h1>
+  <div class="media">
+    <picture>
+      <source media="(max-width: 1023px)" srcset={mobile.src} />
+      <Image src={hero.image.src} alt={hero.image.alt} class="img" loading="eager" fetchpriority="high" />
+    </picture>
+    <div class="action">
+      <EditorialAction label={hero.action.label} href={hero.action.href} surface="inverse" />
+    </div>
+  </div>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+
+  // Ледь помітна «глибина»: за мишкою фото трохи повертається в перспективі й зсувається,
+  // ніби камера злегка змінює ракурс. Заголовок нерухомий. Лише десктоп.
+  gsap.matchMedia().add('(min-width: 1024px) and (hover: hover) and (prefers-reduced-motion: no-preference)', () => {
+    const hero = document.querySelector<HTMLElement>('.hero');
+    const img = hero?.querySelector<HTMLElement>('.img');
+    if (!hero || !img) return;
+
+    // +5%, щоб під час нахилу біля країв фото (зверху/знизу) не з'являлись порожні смуги
+    gsap.set(img, { transformPerspective: 1400, transformOrigin: '50% 40%', scale: 1.05 });
+    const opts = { duration: 1.2, ease: 'power3.out' };
+    const to = {
+      rx: gsap.quickTo(img, 'rotationX', opts),
+      ry: gsap.quickTo(img, 'rotationY', opts),
+      x: gsap.quickTo(img, 'x', opts),
+      y: gsap.quickTo(img, 'y', opts),
+    };
+
+    const move = (e: MouseEvent) => {
+      const r = hero.getBoundingClientRect();
+      const nx = (e.clientX - r.left) / r.width - 0.5; // -0.5…0.5
+      const ny = (e.clientY - r.top) / r.height - 0.5;
+      to.ry(nx * 3); // максимум ±1.5°
+      to.rx(-ny * 2); // максимум ±1°
+      to.x(nx * -16); // фото ледь «їде» назустріч
+      to.y(ny * -10);
+    };
+    const reset = () => Object.values(to).forEach((fn) => fn(0));
+
+    hero.addEventListener('mousemove', move);
+    hero.addEventListener('mouseleave', reset);
+    return () => {
+      hero.removeEventListener('mousemove', move);
+      hero.removeEventListener('mouseleave', reset);
+      gsap.set(img, { clearProps: 'transform' });
+    };
+  });
+</script>
+
+<style>
+  /* Мобільний (макет 375 × 868): фото на весь екран, заголовок і кнопка поверх у режимі difference */
+  .hero {
+    position: relative;
+    aspect-ratio: 375 / 868;
+    overflow: hidden;
+  }
+  .img {
+    position: absolute;
+    top: 0;
+    left: 3.47%; /* 13px з макета */
+    width: 96.53%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .title {
+    position: absolute;
+    z-index: 1;
+    top: 53.2%; /* y 462 */
+    left: var(--space-24);
+    max-width: 15.25rem; /* 244px з макета */
+    font-size: var(--fs-display);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    text-transform: capitalize;
+    color: var(--text-inverse);
+    mix-blend-mode: difference;
+  }
+  .action {
+    position: absolute;
+    top: 86.75%; /* y 753 */
+    left: 50%;
+    transform: translateX(-50%);
+    mix-blend-mode: difference;
+  }
+
+  /* Десктоп (макет 1920 × 960) */
+  @media (min-width: 1024px) {
+    .hero {
+      display: grid;
+      grid-template-columns: 788fr 1132fr; /* колонки з макета */
+      aspect-ratio: 1920 / 960;
+    }
+    .title {
+      position: relative;
+      top: auto;
+      left: auto;
+      max-width: none;
+      align-self: center;
+      padding-left: var(--gutter);
+      color: var(--text-primary);
+      mix-blend-mode: normal;
+    }
+    .media { position: relative; }
+    .img {
+      /* Геометрія з Figma: рамка 1308px виходить за край на 176px, фото в ній 103.85% висоти, притиснуте вправо */
+      left: auto;
+      right: -10%;
+      height: 103.85%;
+      width: auto;
+      max-width: none;
+      object-fit: fill;
+    }
+    .action {
+      top: auto;
+      left: auto;
+      right: var(--gutter);
+      bottom: var(--space-96);
+      transform: none;
+      mix-blend-mode: normal;
+    }
+  }
+</style>

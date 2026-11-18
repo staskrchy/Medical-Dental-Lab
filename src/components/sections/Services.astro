@@ -1,0 +1,258 @@
+---
+import { Image } from 'astro:assets';
+import data from '../../content/services';
+---
+
+<section class="services" id="services">
+  <div class="head" data-reveal>
+    <h2 class="title">{data.title}</h2>
+    <p class="text">{data.text}</p>
+  </div>
+
+  <ul class="list" data-reveal-group>
+    {data.items.map((item) => (
+      <li class="row">
+        <p class="name">{item.name}<span class="tag">{item.tag}</span></p>
+        <p class="desc">{item.text}</p>
+        <a class="more" href={item.href}>{data.more}</a>
+        <p class="duration">{item.duration.map((d) => <span>{d}</span>)}</p>
+        <Image src={item.image.src} alt={item.image.alt} class="img" />
+      </li>
+    ))}
+  </ul>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+
+  // Фото послуги «пливе» за курсором: з'являється зі збільшенням, рухається з інерцією
+  // і трохи нахиляється в бік руху миші. Лише десктоп і лише якщо анімації не вимкнені.
+  gsap.matchMedia().add('(min-width: 1024px) and (hover: hover) and (prefers-reduced-motion: no-preference)', () => {
+    const cleanups: (() => void)[] = [];
+
+    document.querySelectorAll<HTMLElement>('.services .row').forEach((row) => {
+      const img = row.querySelector<HTMLElement>('.img');
+      if (!img) return;
+      row.classList.add('has-follow');
+      gsap.set(img, { xPercent: -50, yPercent: -50, left: 0, top: 0, scale: 0.6, rotation: 0, autoAlpha: 0 });
+
+      const xTo = gsap.quickTo(img, 'x', { duration: 0.6, ease: 'power3' });
+      const yTo = gsap.quickTo(img, 'y', { duration: 0.6, ease: 'power3' });
+      const rotTo = gsap.quickTo(img, 'rotation', { duration: 0.5, ease: 'power3' });
+      let lastX = 0;
+      let calm = 0;
+
+      const move = (e: MouseEvent) => {
+        const r = row.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        xTo(x);
+        yTo(e.clientY - r.top);
+        rotTo(gsap.utils.clamp(-12, 12, (x - lastX) * 0.6)); // нахил від швидкості руху
+        lastX = x;
+        clearTimeout(calm);
+        calm = window.setTimeout(() => rotTo(0), 90); // мишка зупинилась — фото вирівнюється
+      };
+      const enter = (e: MouseEvent) => {
+        const r = row.getBoundingClientRect();
+        const y = e.clientY - r.top;
+        lastX = e.clientX - r.left;
+        // З'являється одразу під курсором: другий аргумент quickTo «перестрибує» в цю точку,
+        // інакше незавершений рух із попереднього наведення тягнув фото з його старого місця
+        xTo(lastX, lastX);
+        yTo(y, y);
+        rotTo(0, 0);
+        gsap.to(img, { autoAlpha: 1, scale: 1, duration: 0.45, ease: 'power3.out', overwrite: 'auto' });
+      };
+      const leave = () => {
+        rotTo(0);
+        gsap.to(img, { autoAlpha: 0, scale: 0.6, duration: 0.35, ease: 'power2.in', overwrite: 'auto' });
+      };
+
+      row.addEventListener('mouseenter', enter);
+      row.addEventListener('mousemove', move);
+      row.addEventListener('mouseleave', leave);
+      cleanups.push(() => {
+        row.removeEventListener('mouseenter', enter);
+        row.removeEventListener('mousemove', move);
+        row.removeEventListener('mouseleave', leave);
+        row.classList.remove('has-follow');
+        gsap.set(img, { clearProps: 'all' });
+      });
+    });
+
+    return () => cleanups.forEach((fn) => fn());
+  });
+</script>
+
+<style>
+  /* Мобільний (макет: 3045–4116 px): рядки — назва і тег, опис, тривалість; без фото і «Learn more» */
+  .services {
+    padding: calc(var(--space-96) + 2px) var(--space-24) var(--space-32);
+    color: var(--text-primary);
+  }
+  .head {
+    padding-bottom: var(--space-32);
+    border-bottom: 0.5px solid var(--color-slate-400);
+  }
+  .title {
+    max-width: 15.625rem; /* 250px з макета */
+    font-size: var(--fs-32);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .text {
+    margin-top: var(--space-16);
+    font-size: var(--fs-16);
+    line-height: var(--lh-relaxed);
+    letter-spacing: var(--ls-none);
+  }
+
+  .list { list-style: none; }
+  .row {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: calc(var(--space-32) + var(--space-4)) 0;
+    border-bottom: 0.5px solid var(--color-slate-400);
+  }
+  /* Фон наведення/дотику: синій 87%, ширше за рядок (6–370 px у макеті) */
+  .row::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(var(--space-16) - var(--space-32) - 2px);
+    background: color-mix(in srgb, var(--surface-inverse) 87%, transparent);
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease);
+  }
+  .row > :not(.img) {
+    position: relative;
+    transition: color var(--duration) var(--ease), transform var(--duration) var(--ease);
+  }
+
+  .name {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: var(--fs-20);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .tag,
+  .duration {
+    font-size: var(--fs-14);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-wide);
+  }
+  .tag { color: var(--text-link-muted); }
+  .desc {
+    margin-top: var(--space-12);
+    font-size: var(--fs-12);
+    line-height: var(--lh-relaxed);
+    letter-spacing: var(--ls-none);
+    opacity: 0.6;
+  }
+  .more,
+  .img { display: none; }
+  .duration {
+    display: flex;
+    flex-direction: row-reverse; /* на мобільному: «3 sessions» ліворуч, «3 to 6 months» праворуч */
+    justify-content: space-between;
+    margin-top: var(--space-32);
+    font-size: var(--fs-12);
+  }
+  .row:hover::before,
+  .row:active::before { opacity: 1; }
+  .row:hover > :not(.img):not(.more),
+  .row:active > :not(.img):not(.more) { color: var(--text-inverse); }
+  .row:hover .tag,
+  .row:active .tag { color: color-mix(in srgb, var(--text-inverse) 60%, transparent); }
+
+  /* Десктоп (макет: блок 3244–4394 px) */
+  @media (min-width: 1024px) {
+    .services { padding: var(--space-80) var(--gutter); }
+    .head {
+      display: flex;
+      justify-content: space-between;
+      padding-bottom: var(--space-56);
+    }
+    .title {
+      max-width: 32rem; /* 503px з макета */
+      font-size: var(--fs-64);
+    }
+    .text {
+      max-width: 41.75rem; /* 669px з макета */
+      margin-top: 0;
+      font-size: var(--fs-24);
+    }
+
+    .list { margin-top: var(--space-64); }
+    .row {
+      display: grid;
+      grid-template-columns: 624fr 703fr 355fr 158fr; /* колонки з макета */
+      align-items: start;
+      padding: var(--space-64) 0;
+    }
+    .row::before { inset: 0 calc(var(--space-16) - var(--gutter)); }
+
+    .name {
+      justify-content: flex-start;
+      gap: var(--space-24);
+      font-size: var(--fs-48);
+    }
+    .tag { font-size: var(--fs-20); }
+    .desc {
+      max-width: 31.75rem; /* 509px з макета */
+      margin-top: 0;
+      font-size: var(--fs-20);
+      opacity: 1;
+    }
+    .more {
+      display: block;
+      margin-top: var(--space-16);
+      font-size: var(--fs-18);
+      line-height: var(--lh-relaxed);
+      letter-spacing: var(--ls-none);
+      color: var(--text-link-muted);
+    }
+    .duration {
+      flex-direction: column;
+      justify-content: flex-start;
+      gap: var(--space-8);
+      margin-top: 0;
+      font-size: var(--fs-20);
+    }
+
+    /* Фото послуги: 365 × 262, x 1259, по центру рядка */
+    .img {
+      display: block;
+      position: absolute;
+      z-index: 1;
+      top: 50%;
+      left: 66.3%;
+      width: 19.8%;
+      height: auto;
+      aspect-ratio: 365 / 262;
+      object-fit: cover;
+      object-position: bottom;
+      opacity: 0;
+      transform: translateY(-50%) scale(0.9);
+      pointer-events: none;
+      transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease);
+    }
+
+    .row:hover .tag { color: var(--text-link-muted); }
+    .row:hover .name,
+    .row:hover .desc { transform: translateX(var(--space-32)); }
+    .row:hover .img {
+      opacity: 1;
+      transform: translateY(-50%) scale(1);
+    }
+    /* Коли працює скрипт «фото за курсором», положення й появу фото веде GSAP */
+    .row.has-follow .img {
+      z-index: 2;
+      transition: none;
+      will-change: transform, opacity;
+    }
+  }
+</style>

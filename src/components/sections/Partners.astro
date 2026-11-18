@@ -1,0 +1,73 @@
+---
+import { Image } from 'astro:assets';
+import partners from '../../content/partners';
+---
+
+<section class="partners" aria-label="Partners">
+  <div class="track" data-marquee>
+    {[0, 1].map((copy) => (
+      <div class="group" aria-hidden={copy ? 'true' : undefined}>
+        {partners.logos.map((logo) => (
+          <Image
+            src={logo.src}
+            alt={copy ? '' : logo.alt}
+            class="logo"
+            style={`--w: ${logo.width / 16}rem; --h: ${logo.height / 16}rem`}
+          />
+        ))}
+      </div>
+    ))}
+  </div>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+
+  const track = document.querySelector<HTMLElement>('[data-marquee]');
+  if (track) {
+    gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
+      // Дві однакові групи: зсув на половину треку дає безшовний цикл зліва направо
+      gsap.fromTo(track, { xPercent: -50 }, { xPercent: 0, duration: 40, ease: 'none', repeat: -1 });
+    });
+  }
+</script>
+
+<style>
+  /* Мобільний (макет: 108:1063): та сама стрічка, логотипи у 0.465 від десктопних */
+  .partners {
+    --logo-scale: 0.465;
+    overflow: hidden;
+    padding-block: var(--space-12);
+    background: color-mix(in srgb, var(--surface-soft) 55%, transparent);
+    backdrop-filter: blur(var(--space-8));
+  }
+  .track {
+    display: flex;
+    width: max-content;
+  }
+  .group {
+    display: flex;
+    align-items: center;
+    gap: var(--space-40);
+    padding-right: var(--space-40);
+  }
+  .logo {
+    width: calc(var(--w) * var(--logo-scale));
+    height: calc(var(--h) * var(--logo-scale));
+    object-fit: contain;
+    opacity: 0.44;
+  }
+
+  /* Десктоп (макет: Group 31, 76:354) */
+  @media (min-width: 1024px) {
+    .partners {
+      --logo-scale: 1;
+      padding-block: var(--space-24);
+      backdrop-filter: blur(var(--space-16));
+    }
+    .group {
+      gap: var(--space-80);
+      padding-right: var(--space-80);
+    }
+  }
+</style>

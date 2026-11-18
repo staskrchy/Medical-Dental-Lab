@@ -1,0 +1,16 @@
+# Залежності та збірка
+node_modules/
+dist/
+.astro/
+
+# Змінні оточення
+.env
+.env.*
+!.env.example
+
+# Логи
+npm-debug.log*
+
+# Системні файли
+.DS_Store
+Thumbs.db

@@ -1,0 +1,66 @@
+---
+import { Image } from 'astro:assets';
+import Layout from '../layouts/Layout.astro';
+import EditorialAction from '../components/ui/EditorialAction.astro';
+import data from '../content/not-found';
+---
+
+<Layout title={data.meta.title}>
+  <main class="not-found">
+    <!-- Фото на весь екран: краї кадру збігаються з краями екрана, тож лікар не виглядає обрізаним -->
+    <Image src={data.image.src} alt={data.image.alt} class="img" loading="eager" quality={90} />
+    <!-- difference: білий текст на білому фоні стає чорним, на темному силуеті — білим -->
+    <h1 class="code">{data.code}</h1>
+    <div class="action">
+      <EditorialAction label={data.action.label} href={data.action.href} surface="inverse" />
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .not-found {
+    position: relative;
+    display: grid;
+    place-items: center;
+    height: 100svh;
+    overflow: hidden;
+    isolation: isolate; /* difference змішується лише з фото */
+    background: var(--surface-default);
+  }
+  .img {
+    position: absolute;
+    /* Зсув на 100px ліворуч, щоб лікар стояв по центру; ширина +100px, щоб справа не було щілини */
+    top: 0;
+    left: calc((var(--space-96) + var(--space-4)) * -1);
+    width: calc(100% + var(--space-96) + var(--space-4));
+    height: 100%;
+    object-fit: cover;
+    /* Як на головному екрані: фото в повну висоту екрана без збільшення;
+       на вузьких екранах обрізаються лише білі краї, лікар (≈62% ширини фото) лишається в кадрі */
+    object-position: 62% top;
+  }
+  .code,
+  .action {
+    position: relative;
+    mix-blend-mode: difference;
+  }
+  .code {
+    font-size: clamp(var(--fs-120), 30vw, calc(var(--fs-120) * 3));
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: var(--ls-tight);
+    color: var(--text-inverse);
+    pointer-events: none;
+  }
+  .action {
+    position: absolute;
+    left: 50%;
+    bottom: var(--space-48);
+    transform: translateX(-50%);
+  }
+
+  @media (min-width: 1024px) {
+    .code { font-size: calc(var(--fs-120) * 3); /* 360px при 1920 */ }
+    .action { bottom: var(--space-80); }
+  }
+</style>

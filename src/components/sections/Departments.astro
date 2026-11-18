@@ -1,0 +1,206 @@
+---
+import { Image } from 'astro:assets';
+import EditorialAction from '../ui/EditorialAction.astro';
+import data from '../../content/departments';
+---
+
+<section class="departments">
+  <Image src={data.image.src} alt={data.image.alt} class="img" />
+
+  <div class="content">
+    <ul class="stats" data-reveal-group>
+      {data.stats.map((s) => (
+        <li class="stat">
+          <p class="stat-value"><span data-count>{s.value}</span><span class="stat-unit">{s.unit}</span></p>
+          <p class="stat-text">{s.text}</p>
+        </li>
+      ))}
+    </ul>
+
+    <h2 class="title" data-reveal>{data.title}</h2>
+    <p class="caption" data-reveal>{data.caption}</p>
+
+    <nav class="tabs" data-reveal>
+      {data.tabs.map((t) => (
+        <EditorialAction label={t.label} href={t.href} surface="inverse" muted />
+      ))}
+    </nav>
+  </div>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  const numbers = document.querySelectorAll<HTMLElement>('.departments [data-count]');
+  if (numbers.length) {
+    // Лише десктоп і лише якщо анімації не вимкнені в системі
+    gsap.matchMedia().add('(min-width: 1024px) and (prefers-reduced-motion: no-preference)', () => {
+      numbers.forEach((el) => {
+        const original = (el.dataset.original ??= el.textContent ?? '');
+        // «2 500» → 2500, «4,9» → 4.9; формат (пробіл між тисячами, кома) зберігаємо
+        const decimals = original.includes(',') ? original.split(',')[1].length : 0;
+        const target = parseFloat(original.replace(/\s/g, '').replace(',', '.'));
+        const format = (n: number) =>
+          n.toLocaleString('fr-FR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).replace(/ | /g, ' ');
+
+        const counter = { value: 0 };
+        el.textContent = format(0);
+        gsap.to(counter, {
+          value: target,
+          duration: 1.6,
+          ease: 'power2.out',
+          scrollTrigger: { trigger: el, start: 'top 85%', once: true },
+          onUpdate: () => { el.textContent = format(counter.value); },
+          onComplete: () => { el.textContent = original; },
+        });
+      });
+      // При виході з десктопу повертаємо початкові значення
+      return () => numbers.forEach((el) => (el.textContent = el.dataset.original ?? el.textContent));
+    });
+  }
+</script>
+
+<style>
+  /* Мобільний (макет: 1768–3045 px, 375 × 1277): без фото, цифри стовпчиком, вкладки одна під одною */
+  .departments {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+  }
+  .img { display: none; }
+  .content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    padding: calc(var(--space-64) + var(--space-8)) var(--space-24) calc(var(--space-96) + var(--space-12));
+  }
+
+  .stats {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-48) + 2px); /* 50px з макета */
+    padding-bottom: var(--space-48);
+    border-bottom: 0.5px solid color-mix(in srgb, var(--border-neutral-0) 20%, transparent);
+    list-style: none;
+  }
+  .stat-value {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-8);
+    font-size: var(--fs-64);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .stat-unit {
+    font-size: var(--fs-20);
+    text-transform: lowercase;
+    color: var(--text-accent);
+  }
+  .stat-text {
+    max-width: 12rem; /* ~159–191 px з макета */
+    margin-top: var(--space-8);
+    font-size: var(--fs-18);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    opacity: 0.29;
+  }
+
+  .title {
+    margin-top: calc(var(--space-48) + 2px);
+    font-size: var(--fs-24);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    text-wrap: pretty;
+  }
+  .caption {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    text-transform: capitalize;
+  }
+  .caption::before {
+    content: '';
+    width: var(--space-8);
+    border-top: var(--border-width) solid currentColor;
+  }
+  .tabs {
+    --action-fs: var(--fs-32);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-32);
+    margin-top: calc(var(--space-80) + var(--space-4));
+  }
+
+  /* Десктоп (макет: блок 2252–3244 px, 1920 × 992) */
+  @media (min-width: 1024px) {
+    .departments { aspect-ratio: 1920 / 992; }
+    /* Фото праворуч: x 1259, ширина 661, з градієнтом 190 px зліва */
+    .img {
+      display: block;
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 34.43%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .departments::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 65.57%;
+      width: 9.9%;
+      background: linear-gradient(to right, var(--surface-inverse), transparent);
+    }
+    .content {
+      height: 100%;
+      padding: 0 0 var(--space-120);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 375fr 328fr 284fr 933fr; /* межі колонок з макета */
+      gap: 0;
+      padding-bottom: 0;
+      border-bottom: 0;
+    }
+    .stat {
+      padding: var(--space-40) var(--space-16) var(--space-16) var(--space-40);
+      border-right: 0.5px solid color-mix(in srgb, var(--border-neutral-0) 20%, transparent);
+    }
+    .stat:last-child { border-right: 0; }
+
+    .title {
+      max-width: 72rem; /* 1151 px з макета */
+      margin-top: calc(var(--space-120) + var(--space-16));
+      padding-left: var(--gutter);
+      font-size: var(--fs-64);
+      text-wrap: wrap;
+    }
+    .caption {
+      margin-top: var(--space-64);
+      padding-left: var(--gutter);
+      font-size: var(--fs-18);
+    }
+    .caption::before { width: var(--space-12); }
+    .tabs {
+      --action-fs: var(--fs-36);
+      flex-direction: row;
+      gap: var(--space-56);
+      margin-top: auto;
+      padding-left: var(--gutter);
+    }
+  }
+</style>

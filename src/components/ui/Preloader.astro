@@ -1,0 +1,87 @@
+---
+// Прелоадер головної: синій екран → логотип → «Microscopic Dental Lab» праворуч від нього →
+// екран піднімається і відкриває перший екран (фото м'яко «наближається», заголовок і кнопка виїжджають).
+// Показується один раз за сесію; без JS і при reduced motion — не показується.
+import { Image } from 'astro:assets';
+import logo from '../../assets/images/footer/logo-mdl.png';
+import site from '../../content/site.json';
+---
+
+<!-- Якщо прелоадер у цій вкладці вже був (або прийшли переходом квадратами) — ховаємо його ще до першого кадру -->
+<script is:inline>
+  if (sessionStorage.getItem('mdl-preloaded') || sessionStorage.getItem('mdl-transition') || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    document.documentElement.classList.add('no-preloader');
+  }
+</script>
+<noscript><style>.preloader { display: none !important; }</style></noscript>
+
+<div class="preloader" data-preloader aria-hidden="true">
+  <div class="brand">
+    <Image src={logo} alt="" class="logo" width={180} data-pre-logo />
+    <span class="name-mask"><span class="name" data-pre-name>{site.title}</span></span>
+  </div>
+</div>
+
+<script>
+  import { gsap } from 'gsap';
+
+  const pre = document.querySelector<HTMLElement>('[data-preloader]');
+  if (pre && !document.documentElement.classList.contains('no-preloader')) {
+    sessionStorage.setItem('mdl-preloaded', '1');
+    const hero = document.querySelector<HTMLElement>('.hero');
+    const heroImg = hero?.querySelector('.img');
+    const heroText = hero ? hero.querySelectorAll('.title, .action') : [];
+
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' }, onComplete: () => pre.remove() });
+    tl.from('[data-pre-logo]', { autoAlpha: 0, scale: 0.85, y: 12, duration: 0.7 })
+      // Назва «викочується» праворуч від логотипу
+      .from('[data-pre-name]', { xPercent: -105, duration: 0.8 }, '-=0.15')
+      .to({}, { duration: 0.45 }) // коротка пауза
+      .to('[data-pre-logo], [data-pre-name]', { autoAlpha: 0, y: -16, duration: 0.4, ease: 'power2.in', stagger: 0.05 })
+      // Синій екран піднімається і відкриває перший екран
+      .to(pre, { yPercent: -100, duration: 1, ease: 'power4.inOut' }, '-=0.1')
+      .from(heroImg ?? [], { scale: '+=0.08', duration: 1.4, ease: 'power3.out' }, '<0.15')
+      .from(heroText, { autoAlpha: 0, y: 30, duration: 0.8, stagger: 0.12, clearProps: 'transform,opacity,visibility' }, '<0.35');
+  }
+</script>
+
+<style>
+  .preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 300; /* над усім, включно з переходом квадратами */
+    display: grid;
+    place-items: center;
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+  }
+  :global(html.no-preloader) .preloader { display: none; }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: var(--space-12);
+  }
+  .logo {
+    width: auto;
+    height: var(--space-48);
+  }
+  /* Маска: назва виїжджає з-під логотипу і видна лише праворуч від нього */
+  .name-mask {
+    overflow: hidden;
+    padding-block: 0.1em;
+  }
+  .name {
+    display: block;
+    font-size: var(--fs-20);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 1024px) {
+    .brand { gap: var(--space-24); }
+    .logo { height: var(--space-80); }
+    .name { font-size: var(--fs-40); }
+  }
+</style>

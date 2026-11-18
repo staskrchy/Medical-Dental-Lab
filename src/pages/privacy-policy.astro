@@ -1,0 +1,17 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/sections/Header.astro';
+import PrivacyPolicy from '../components/sections/PrivacyPolicy.astro';
+import Footer from '../components/sections/Footer.astro';
+import BookingPanel from '../components/sections/BookingPanel.astro';
+import data from '../content/privacy';
+---
+
+<Layout title={data.meta.title}>
+  <Header />
+  <main>
+    <PrivacyPolicy />
+  </main>
+  <Footer />
+  <BookingPanel />
+</Layout>

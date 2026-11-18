@@ -1,0 +1,104 @@
+---
+import { Image } from 'astro:assets';
+import why from '../../content/why';
+---
+
+<section class="why">
+  <p class="kicker" data-reveal>{why.kicker}</p>
+  <p class="label" data-reveal>{why.label}</p>
+  <h2 class="title" data-reveal>{why.title}</h2>
+  <span class="line" aria-hidden="true"></span>
+  <p class="text" data-reveal>{why.text}</p>
+  <Image src={why.image.src} alt={why.image.alt} class="jaw" />
+</section>
+
+<script>
+  import { mouseDepth } from '../../scripts/depth';
+
+  // Ледь помітна «глибина»: рухається лише щелепа
+  const why = document.querySelector<HTMLElement>('.why');
+  mouseDepth(why, why?.querySelector<HTMLElement>('.jaw') ?? null, { strength: 1.6 });
+</script>
+
+<style>
+  /* Мобільний (макет: 929–1768 px, 375 × 839) */
+  .why {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    aspect-ratio: 375 / 839;
+    padding: calc(var(--space-120) + var(--space-40)) var(--space-24) 0;
+    overflow: hidden;
+    text-align: center;
+    color: var(--text-primary);
+  }
+  /* Щелепа: 709px завширшки, x -167, верх на 519px від початку секції */
+  .jaw {
+    position: absolute;
+    left: -44.5%;
+    top: 61.9%;
+    width: 189%;
+    height: auto;
+    max-width: none;
+  }
+  .kicker,
+  .label {
+    font-size: var(--fs-14);
+    line-height: var(--lh-snug);
+    color: var(--text-ink-800);
+    text-transform: uppercase;
+  }
+  .label {
+    margin-top: var(--space-4);
+    letter-spacing: var(--ls-none);
+  }
+  .title {
+    max-width: 20rem; /* 319px з макета */
+    margin-top: var(--space-32);
+    font-size: var(--fs-40);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    text-transform: capitalize;
+  }
+  .line {
+    width: var(--space-120);
+    margin-top: var(--space-24);
+    border-top: 0.5px solid var(--border-neutral-325);
+  }
+  .text {
+    max-width: 18rem; /* 289px з макета */
+    margin-top: var(--space-16);
+    font-size: var(--fs-14);
+    line-height: var(--lh-relaxed);
+    letter-spacing: var(--ls-none);
+  }
+
+  /* Десктоп (макет: Group 33, 76:369) */
+  @media (min-width: 1024px) {
+    .why {
+      aspect-ratio: 1920 / 1080; /* 1172–2252 px у макеті */
+      padding: calc(var(--space-120) + var(--space-80)) 0 0;
+    }
+    /* Щелепа з макета (84:373): 1369 × 1103 px, x 252, верх на 690 px від початку секції; низ обрізаний */
+    .jaw {
+      left: 13.125%;
+      top: 63.9%;
+      width: 71.3%;
+    }
+    .kicker,
+    .label { font-size: var(--fs-16); }
+    .title {
+      max-width: 52rem; /* 833px з макета */
+      margin-top: var(--space-48);
+      font-size: var(--fs-64);
+    }
+    .line { margin-top: var(--space-40); }
+    .text {
+      max-width: 24.25rem; /* 388px з макета */
+      margin-top: var(--space-40);
+      font-size: var(--fs-18);
+    }
+  }
+</style>

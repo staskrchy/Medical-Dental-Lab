@@ -1,0 +1,311 @@
+---
+import { Image } from 'astro:assets';
+import data from '../../content/optics';
+const { card } = data;
+---
+
+<section class="optics" id="lab">
+  <div class="card" data-reveal>
+    <Image src={card.image.src} alt={card.image.alt} class="card-img" />
+
+    <div class="index">
+      <p class="index-label">{card.label}</p>
+      <p class="index-zoom">{card.zoom}</p>
+    </div>
+
+    <div class="card-body">
+      <h3 class="card-title">{card.title}</h3>
+      <span class="card-line" aria-hidden="true"></span>
+      <p class="card-text">{card.text}</p>
+    </div>
+
+    <div class="scale" aria-hidden="true">
+      <div class="scale-marks">{card.scale.map((m) => <span>{m}</span>)}</div>
+      <div class="scale-line"></div>
+    </div>
+  </div>
+
+  <div class="info">
+    <h2 class="title" data-reveal>{data.title}<br /><span class="title-muted">{data.titleMuted}</span></h2>
+    <p class="text" data-reveal>{data.text}</p>
+
+    <ul class="facts" data-reveal-group>
+      {data.facts.map((f) => (
+        <li class="fact">
+          <p class="fact-value">{f.value}</p>
+          <p class="fact-text">{f.text}</p>
+          <a class="fact-more" href={f.href}>{data.more}</a>
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<style>
+  /* Мобільний (макет: 4116–5202 px): картка мікроскопа на всю ширину, нижче текст і факти */
+  .optics {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-24) 1px calc(var(--space-80) + var(--space-8));
+    background: var(--surface-soft);
+    color: var(--text-primary);
+  }
+
+  /* ---------- Картка мікроскопа ---------- */
+  .card {
+    position: relative;
+    aspect-ratio: 902 / 905;
+    overflow: hidden;
+    border-radius: var(--space-12); /* на мобільному кути заокруглені, як у макеті */
+    color: var(--text-inverse);
+  }
+  .card-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .index {
+    position: absolute;
+    top: var(--space-24);
+    left: var(--space-24);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .index-label {
+    font-size: calc(var(--fs-12) / 2); /* 6px з макета */
+    letter-spacing: var(--ls-none);
+    text-transform: uppercase;
+    color: var(--accent-optics);
+  }
+  .index-zoom {
+    font-size: var(--fs-48);
+    line-height: var(--lh-normal);
+    letter-spacing: calc(var(--ls-wide) * -1);
+  }
+  .card-body {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding-inline: var(--space-48);
+    text-align: center;
+  }
+  /* Темне розмите світіння під текстом (Rectangle 7) */
+  .card-body::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 64%;
+    height: 40%;
+    transform: translate(-50%, -50%);
+    background: var(--surface-inverse);
+    opacity: 0.55;
+    filter: blur(var(--space-16));
+  }
+  .card-body > * { position: relative; }
+  .card-title {
+    max-width: 10.5rem; /* 166px з макета */
+    font-size: var(--fs-20);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .card-line {
+    width: calc(var(--space-80) - 3px); /* 77px */
+    margin-top: var(--space-12);
+    border-top: var(--border-width) solid var(--border-neutral-0);
+  }
+  .card-text {
+    margin-top: var(--space-12);
+    font-size: var(--fs-12);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    text-wrap: pretty;
+  }
+  .scale { display: none; }
+
+  /* ---------- Текст і факти ---------- */
+  .info {
+    display: flex;
+    flex-direction: column;
+    padding: calc(var(--space-24) + var(--space-4)) var(--space-24) 0;
+  }
+  .title {
+    font-size: var(--fs-32);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .title-muted { color: var(--text-unavailable); }
+  .text {
+    margin-top: var(--space-16);
+    font-size: var(--fs-12);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    color: var(--text-secondary);
+    text-wrap: pretty;
+  }
+
+  .facts {
+    list-style: none;
+    margin-top: var(--space-24);
+    border-top: 0.5px solid var(--color-slate-400);
+  }
+  .fact {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'value more' 'text text';
+    align-items: center;
+    padding-block: calc(var(--space-24) + var(--space-4)) var(--space-24);
+    border-bottom: 0.5px solid var(--color-slate-400);
+  }
+  /* Фон наведення/дотику: синій 87%, ширше за рядок (4–371 px у макеті) */
+  .fact::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(var(--space-4) - var(--space-24));
+    background: color-mix(in srgb, var(--surface-inverse) 87%, transparent);
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease);
+  }
+  .fact > * {
+    position: relative;
+    transition: color var(--duration) var(--ease), transform var(--duration) var(--ease);
+  }
+  .fact-value {
+    grid-area: value;
+    font-size: var(--fs-32);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .fact-text {
+    grid-area: text;
+    margin-top: var(--space-4);
+    font-size: var(--fs-14);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+  }
+  .fact-more {
+    grid-area: more;
+    font-size: var(--fs-18);
+    line-height: var(--lh-relaxed);
+    letter-spacing: var(--ls-none);
+    color: var(--text-link-muted);
+  }
+  .fact:hover::before,
+  .fact:active::before { opacity: 1; }
+  .fact:hover .fact-value,
+  .fact:hover .fact-text,
+  .fact:active .fact-value,
+  .fact:active .fact-text { color: var(--text-inverse); }
+  .fact:hover .fact-more,
+  .fact:active .fact-more { color: color-mix(in srgb, var(--text-inverse) 60%, transparent); }
+
+  /* Десктоп (макет: блок 4394–5386 px) */
+  @media (min-width: 1024px) {
+    .optics {
+      display: grid;
+      grid-template-columns: 902fr 909fr; /* колонки з макета */
+      gap: var(--space-32);
+      padding: var(--space-40) var(--gutter);
+    }
+
+    .card { border-radius: 0; }
+    .index {
+      top: var(--space-32);
+      left: var(--space-32);
+      gap: var(--space-8);
+    }
+    .index-label { font-size: var(--fs-12); }
+    .index-zoom { font-size: calc(var(--fs-20) * 5); /* 100px з макета */ }
+    .card-body { padding-inline: 0; }
+    .card-body::before {
+      width: 73.5%;
+      filter: blur(var(--space-32));
+    }
+    .card-title {
+      max-width: 32rem; /* 503px з макета */
+      font-size: var(--fs-64);
+    }
+    .card-line {
+      width: calc(var(--space-120) + var(--space-32)); /* 150px */
+      margin-top: var(--space-32);
+    }
+    .card-text {
+      max-width: 42rem; /* 672px з макета */
+      margin-top: var(--space-32);
+      font-size: var(--fs-20);
+    }
+    .scale {
+      position: absolute;
+      left: var(--space-32);
+      right: var(--space-32);
+      bottom: var(--space-56);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-12);
+      font-family: var(--font-mono);
+      font-size: var(--fs-12);
+      letter-spacing: var(--ls-none);
+    }
+    .scale-marks {
+      display: flex;
+      justify-content: space-between;
+    }
+    .scale-marks span:last-child { color: var(--accent-optics); }
+    .scale-line {
+      position: relative;
+      height: var(--space-12);
+      display: flex;
+      align-items: center;
+    }
+    .scale-line::before {
+      content: '';
+      flex: 1;
+      border-top: var(--border-width) solid var(--color-periwinkle-200);
+    }
+    .scale-line::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: var(--space-8);
+      height: 83%;
+      background: var(--accent-optics);
+    }
+
+    .info { padding: 0; }
+    .title {
+      max-width: 44rem; /* 701px з макета */
+      font-size: var(--fs-64);
+    }
+    .text {
+      max-width: 40rem; /* 637px з макета */
+      margin-top: var(--space-32);
+      font-size: var(--fs-20);
+    }
+
+    .facts { margin-top: auto; }
+    .fact {
+      grid-template-columns: 236fr 552fr auto; /* колонки з макета */
+      grid-template-areas: 'value text more';
+      aspect-ratio: 909 / 126;
+      padding-block: 0;
+    }
+    .fact::before { inset: 0 calc(var(--space-4) * -1) 0 calc(var(--space-12) * -1); }
+    .fact-value { font-size: var(--fs-36); }
+    .fact-text {
+      margin-top: 0;
+      font-size: var(--fs-20);
+    }
+    .fact:hover .fact-value { transform: translateX(var(--space-12)); }
+    .fact:hover .fact-more { color: var(--text-link-muted); }
+  }
+</style>

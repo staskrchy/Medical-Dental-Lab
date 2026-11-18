@@ -1,0 +1,263 @@
+---
+import { Image, getImage } from 'astro:assets';
+import EditorialAction from '../ui/EditorialAction.astro';
+import data from '../../content/contact';
+
+// Мобільний кадр — окремий файл (вужчий кроп з мобільного макета)
+const mobile = await getImage({ src: data.image.mobile, format: 'webp', width: 750 });
+---
+
+<!-- id="booking": сюди ведуть усі кнопки «Reserve Your Visit»; id="contact" — пункт меню «Contact Us» -->
+<section class="contact" id="booking">
+  <span class="glow" aria-hidden="true"></span>
+  <picture>
+    <source media="(max-width: 1023px)" srcset={mobile.src} />
+    <Image src={data.image.src} alt={data.image.alt} class="img" quality={90} />
+  </picture>
+
+  <div class="content">
+    <h2 class="title" id="contact" data-reveal>{data.title}</h2>
+    <p class="text" data-reveal>{data.text}</p>
+
+    <!-- TODO: підключити відправку форми (бекенд або сервіс форм) -->
+    <!-- novalidate: без спливаючих підказок браузера, помилки показуємо червоним самі -->
+    <form class="form" data-reveal method="post" novalidate data-contact-form>
+      {data.fields.map((f) => (
+        <label class="field">
+          <span class="visually-hidden">{f.placeholder}</span>
+          <input class="input" type={f.type} name={f.name} placeholder={f.placeholder} autocomplete={f.autocomplete} pattern={'pattern' in f ? f.pattern : undefined} required />
+        </label>
+      ))}
+
+      <p class="consent">
+        {data.consent.before}<a href={data.consent.link.href}>{data.consent.link.label}</a>{data.consent.after}
+      </p>
+
+      <div class="submit">
+        <EditorialAction label={data.submit} type="submit" />
+      </div>
+    </form>
+  </div>
+</section>
+
+<script>
+  import { mouseDepth } from '../../scripts/depth';
+
+  // Ледь помітна «глибина»: рухається лише лікарка
+  const contact = document.querySelector<HTMLElement>('.contact');
+  // scale 1.05 — щоб під час руху знизу не з'являлась обрізана смуга
+  mouseDepth(contact, contact?.querySelector<HTMLElement>('.img') ?? null, { strength: 1.6, scale: 1.05 });
+</script>
+
+<script>
+  // Помилки полів: червоні лінія і текст після спроби відправити або після того, як поле покинули
+  document.querySelectorAll<HTMLFormElement>('[data-contact-form]').forEach((form) => {
+    const inputs = form.querySelectorAll<HTMLInputElement>('input');
+    const check = (input: HTMLInputElement) => input.classList.toggle('is-invalid', !input.checkValidity());
+
+    inputs.forEach((input) => {
+      input.addEventListener('blur', () => input.value && check(input));
+      input.addEventListener('input', () => input.classList.contains('is-invalid') && check(input));
+    });
+
+    // Вибір з календаря (послуга, дата, час) — у приховані поля форми
+    const setBooking = (booking: Record<string, string>) =>
+      Object.entries(booking).forEach(([name, value]) => {
+        let hidden = form.querySelector<HTMLInputElement>(`input[type="hidden"][name="${name}"]`);
+        if (!hidden) {
+          hidden = Object.assign(document.createElement('input'), { type: 'hidden', name });
+          form.append(hidden);
+        }
+        hidden.value = value;
+      });
+    const hasBooking = () => Boolean(form.querySelector<HTMLInputElement>('input[type="hidden"][name="date"]')?.value);
+
+    // Заявка готова (контакти + дата): зберігаємо у вкладці й показуємо сторінку подяки
+    // TODO: тут відправка заявки на бекенд
+    const finish = () => {
+      const request = Object.fromEntries(new FormData(form) as unknown as Iterable<[string, string]>);
+      sessionStorage.setItem('mdl-request', JSON.stringify(request));
+      sessionStorage.removeItem('mdl-booking');
+      window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: '/thank-you' }));
+    };
+
+    // Дата могла бути обрана на іншій сторінці (Select Date → Continue)
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('mdl-booking') || 'null');
+      if (saved) setBooking(saved);
+    } catch {}
+
+    // Логіка заявки:
+    // 1) Контакти → «Reserve Your Visit» → календар → Continue → подяка.
+    // 2) Select Date → Continue → контакти → «Reserve Your Visit» → подяка.
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      inputs.forEach(check);
+      if (!form.checkValidity()) {
+        form.querySelector<HTMLInputElement>('.is-invalid')?.focus();
+        return;
+      }
+      if (hasBooking()) return finish();
+      form.dataset.ready = 'true'; // контакти заповнені, чекаємо дату з календаря
+      window.dispatchEvent(new CustomEvent('mdl:open-booking'));
+    });
+
+    window.addEventListener('mdl:booking-chosen', (e) => {
+      setBooking((e as CustomEvent<Record<string, string>>).detail);
+      if (form.dataset.ready === 'true' && form.checkValidity()) return finish();
+      // Контакти ще не заповнені — ведемо до форми
+      document.querySelector('#booking')?.scrollIntoView({ behavior: 'smooth' });
+      form.querySelector<HTMLInputElement>('input:not([type="hidden"])')?.focus({ preventScroll: true });
+    });
+  });
+</script>
+
+<style>
+  /* Мобільний (макет: 9716–11084 px): форма зверху, лікарка знизу на всю ширину */
+  .contact {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--surface-soft);
+    color: var(--text-primary);
+  }
+  .glow { display: none; }
+  picture { order: 1; } /* фото під формою */
+  .img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 375 / 518; /* мобільний файл уже обрізаний під цю рамку */
+    margin-top: calc(var(--space-64) + 2px);
+  }
+
+  .content {
+    position: relative;
+    padding: calc(var(--space-96) + var(--space-4)) var(--space-24) 0;
+  }
+  .title {
+    font-size: var(--fs-32);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    text-transform: capitalize;
+  }
+  .text {
+    margin-top: var(--space-16);
+    font-size: var(--fs-12);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    text-wrap: pretty;
+  }
+
+  .form {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--space-80) + var(--space-8)); /* 88px між полями */
+    margin-top: var(--space-64);
+  }
+  .input {
+    width: 100%;
+    padding: 0 0 var(--space-24);
+    border: 0;
+    border-bottom: 0.5px solid var(--color-slate-400);
+    border-radius: 0;
+    background: none;
+    font-size: var(--fs-20);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color var(--duration) var(--ease);
+  }
+  .input::placeholder { color: var(--text-placeholder); }
+  .input:focus { border-bottom-color: var(--border-strong); }
+  /* Помилка (клас ставить скрипт): червоні лінія, підказка і введений текст */
+  .input.is-invalid {
+    border-bottom-color: var(--border-error);
+    color: var(--border-error);
+  }
+  .input.is-invalid::placeholder { color: var(--border-error); }
+
+  .consent {
+    margin-top: calc(var(--space-16) - var(--space-80) - var(--space-8)); /* 16px під останнім полем */
+    font-size: var(--fs-12);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    color: var(--color-neutral-325);
+  }
+  .consent a {
+    color: var(--text-secondary);
+    text-decoration: underline;
+    text-decoration-thickness: var(--border-width);
+  }
+  .submit {
+    margin-top: 0;
+    text-align: center;
+  }
+
+  /* Десктоп (макет: блок 9693–10678 px, 1920 × 985) */
+  @media (min-width: 1024px) {
+    .contact {
+      display: block;
+      aspect-ratio: 1920 / 985;
+    }
+
+    /* Біле розмите коло за лікаркою: Ø676, центр x 1381, y 522 */
+    .glow {
+      display: block;
+      position: absolute;
+      left: 71.93%;
+      top: 53%;
+      width: 35.2%;
+      aspect-ratio: 1;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: var(--surface-default);
+      filter: blur(var(--space-16));
+    }
+    /* Лікарка: x 742, ширина 1194 */
+    .img {
+      position: absolute;
+      top: 0;
+      left: 38.65%;
+      width: 62.19%;
+      aspect-ratio: auto;
+      margin-top: 0;
+    }
+
+    .content {
+      width: 44.1rem; /* 706px — ширина полів */
+      margin-left: var(--gutter);
+      padding: var(--space-96) 0 0;
+    }
+    .title { font-size: var(--fs-64); }
+    .text {
+      max-width: 33.75rem; /* 538px з макета */
+      margin-top: var(--space-40);
+      font-size: var(--fs-20);
+    }
+
+    .form { margin-top: calc(var(--space-80) + var(--space-8)); }
+
+    .consent {
+      max-width: 28.75rem; /* 459px з макета */
+      margin-top: calc(var(--space-56) * -1); /* 29px під останнім полем */
+      font-size: var(--fs-14);
+    }
+    .submit {
+      margin-top: calc(var(--space-12) * -1);
+      text-align: left;
+    }
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>

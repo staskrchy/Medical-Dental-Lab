@@ -1,0 +1,126 @@
+---
+// Перехід між блоками/сторінками: квадрати заповнюють екран з лівого верхнього кута до правого нижнього,
+// відбувається перехід, і квадрати так само по черзі зникають.
+---
+
+<!-- Якщо прийшли з іншої сторінки під час переходу — одразу закриваємо екран, щоб не мигнула сторінка -->
+<script is:inline>
+  if (sessionStorage.getItem('mdl-transition')) document.documentElement.classList.add('is-transitioning');
+</script>
+<div class="transition" data-transition aria-hidden="true"></div>
+
+<script>
+  import { gsap } from 'gsap';
+
+  const overlay = document.querySelector<HTMLElement>('[data-transition]');
+  const KEY = 'mdl-transition';
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+
+  if (overlay) {
+    let busy = false;
+
+    // Сітка квадратів під поточний розмір екрана
+    const build = () => {
+      const size = innerWidth >= 1024 ? 120 : 64;
+      const cols = Math.ceil(innerWidth / size);
+      const rows = Math.ceil(innerHeight / size);
+      overlay.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      overlay.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+      overlay.replaceChildren(...Array.from({ length: cols * rows }, () => document.createElement('span')));
+      return { cells: overlay.children, grid: [rows, cols] as [number, number] };
+    };
+
+    const cover = (cells: HTMLCollection, grid: [number, number]) =>
+      gsap.fromTo(cells, { scale: 0 }, { scale: 1, duration: 0.35, ease: 'power2.out', stagger: { grid, from: 'start', amount: 0.45 } });
+    const reveal = (cells: HTMLCollection, grid: [number, number]) =>
+      gsap.to(cells, { scale: 0, duration: 0.35, ease: 'power2.in', stagger: { grid, from: 'start', amount: 0.45 } });
+
+    const show = () => overlay.classList.add('is-active');
+    const hide = () => {
+      overlay.classList.remove('is-active');
+      overlay.replaceChildren();
+      busy = false;
+    };
+
+    // Прийшли з іншої сторінки під час переходу: екран уже «закритий», відкриваємо його
+    if (sessionStorage.getItem(KEY)) {
+      sessionStorage.removeItem(KEY);
+      document.documentElement.classList.remove('is-transitioning');
+      if (!reduced.matches) {
+        busy = true;
+        const { cells, grid } = build();
+        gsap.set(cells, { scale: 1 });
+        show();
+        if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ behavior: 'instant' });
+        reveal(cells, grid).then(hide);
+      }
+    }
+
+    document.addEventListener('click', (e) => {
+      const link = (e.target as Element).closest<HTMLAnchorElement>('a[href]');
+      if (!link || busy || reduced.matches) return;
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (link.target === '_blank' || link.hasAttribute('download') || link.hasAttribute('data-booking-open') || link.hasAttribute('data-no-transition')) return;
+      const raw = link.getAttribute('href') ?? '';
+      if (raw === '#' || raw.startsWith('tel:') || raw.startsWith('mailto:')) return;
+
+      const url = new URL(link.href);
+      if (url.origin !== location.origin) return;
+      const samePage = url.pathname === location.pathname;
+      const target = samePage && url.hash ? document.querySelector<HTMLElement>(url.hash) : null;
+      if (samePage && url.hash && !target) return;
+
+      e.preventDefault();
+      go(url, samePage, target);
+    });
+
+    // Перехід з коду (напр. після відправки форми): window.dispatchEvent(new CustomEvent('mdl:navigate', { detail: '/thank-you' }))
+    window.addEventListener('mdl:navigate', (e) => {
+      const url = new URL((e as CustomEvent<string>).detail, location.href);
+      if (reduced.matches || busy) return void (location.href = url.href);
+      go(url, false, null);
+    });
+
+    function go(url: URL, samePage: boolean, target: HTMLElement | null) {
+      busy = true;
+      const { cells, grid } = build();
+      show();
+      cover(cells, grid).then(() => {
+        if (samePage) {
+          // Екран закритий — миттєво переносимось до блоку і відкриваємо екран
+          if (target) target.scrollIntoView({ behavior: 'instant' });
+          else scrollTo({ top: 0, behavior: 'instant' });
+          history.pushState(null, '', url.hash || url.pathname);
+          reveal(cells, grid).then(hide);
+        } else {
+          sessionStorage.setItem(KEY, '1');
+          location.href = url.href;
+        }
+      });
+    }
+  }
+</script>
+
+<style>
+  .transition {
+    position: fixed;
+    inset: 0;
+    z-index: 200; /* над меню і календарем */
+    display: none;
+    pointer-events: none;
+  }
+  .transition.is-active {
+    display: grid;
+    pointer-events: auto; /* поки йде перехід, кліки не проходять */
+  }
+  /* Поки скрипт не побудував квадрати після переходу з іншої сторінки — суцільний синій екран */
+  :global(html.is-transitioning) .transition {
+    display: block;
+    background: var(--surface-inverse);
+  }
+  .transition :global(span) {
+    margin: -0.5px; /* без щілин між квадратами */
+    background: var(--surface-inverse);
+    transform: scale(0);
+  }
+</style>

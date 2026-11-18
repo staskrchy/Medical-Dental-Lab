@@ -1,0 +1,64 @@
+---
+// MDL / Editorial action (UI kit 139:393): текст, підкреслення з'являється зліва направо при наведенні.
+// З href — посилання, без href — кнопка (наприклад, submit у формі).
+interface Props {
+  label: string;
+  href?: string;
+  type?: 'button' | 'submit';
+  surface?: 'light' | 'inverse';
+  muted?: boolean; // напівпрозорий (28%) у спокої, при наведенні заливається кольором зліва направо
+}
+const { label, href, type = 'button', surface = 'light', muted = false } = Astro.props;
+const classes = ['action', surface, { muted }];
+---
+
+{href ? <a class:list={classes} href={href}>{label}</a> : <button class:list={classes} type={type}>{label}</button>}
+
+<style>
+  .action {
+    position: relative;
+    display: inline-block;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: var(--action-fs, var(--fs-36)); /* секція може зменшити через --action-fs */
+    line-height: var(--lh-snug);
+    letter-spacing: var(--ls-tight);
+    text-transform: capitalize;
+    white-space: nowrap;
+  }
+  .light { color: var(--text-primary); }
+  .inverse { color: var(--text-inverse); }
+
+  .action::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-bottom: var(--border-width) solid currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform var(--duration) var(--ease);
+  }
+  .action:hover::after,
+  .action:focus-visible::after {
+    transform: scaleX(1);
+  }
+
+  .muted {
+    background: linear-gradient(to right, currentColor 50%, color-mix(in srgb, currentColor 28%, transparent) 50%);
+    background-size: 200% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    transition: background-position var(--duration) var(--ease);
+  }
+  .muted:hover,
+  .muted:focus-visible {
+    background-position: 0 0;
+  }
+</style>

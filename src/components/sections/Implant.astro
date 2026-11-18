@@ -1,0 +1,370 @@
+---
+import { Image } from 'astro:assets';
+import EditorialAction from '../ui/EditorialAction.astro';
+import data from '../../content/implant';
+const { doctor } = data;
+---
+
+<section class="implant">
+  <header class="head" data-reveal>
+    <p class="label">{data.label}</p>
+    <h2 class="title">{data.title}</h2>
+    <p class="subtitle">{data.subtitle}</p>
+  </header>
+
+  <Image src={data.image.src} alt={data.image.alt} class="img" />
+
+  <!-- Іконка-підказка: при наведенні випливає картка лікаря -->
+  <div class="doctor">
+    <button class="doctor-icon" type="button" aria-describedby="doctor-quote">
+      <Image src={doctor.icon.src} alt={doctor.icon.alt} class="doctor-icon-img" />
+    </button>
+    <div class="doctor-card" id="doctor-quote" role="tooltip">
+      <Image src={doctor.photo.src} alt={doctor.photo.alt} class="doctor-photo" />
+      <div class="doctor-who">
+        <p class="doctor-name">{doctor.name}</p>
+        <p class="doctor-role">{doctor.role}</p>
+      </div>
+      <p class="doctor-quote">{doctor.quote}</p>
+    </div>
+  </div>
+
+  <div class="parts">
+    <ul class="list" data-reveal-group>
+      {data.parts.map((p) => (
+        <li class="part">
+          <p class="part-name">{p.name}<span class="part-tag">{p.tag}</span></p>
+          <p class="part-text">{p.text}</p>
+        </li>
+      ))}
+    </ul>
+    <div class="action" data-reveal>
+      <EditorialAction label={data.action.label} href={data.action.href} />
+    </div>
+  </div>
+</section>
+
+<script>
+  import { mouseDepth } from '../../scripts/depth';
+
+  // Ледь помітна «глибина»: рухається лише імплант (його нахил 7.5° зберігається)
+  const implant = document.querySelector<HTMLElement>('.implant');
+  mouseDepth(implant, implant?.querySelector<HTMLElement>('.img') ?? null, { strength: 1.6 });
+</script>
+
+<style>
+  /* Мобільний (макет: 5202–6664 px): шапка, імплант, частини стовпчиком, кнопка по центру; без картки лікаря */
+  .implant {
+    position: relative;
+    padding: var(--space-96) var(--space-24);
+    color: var(--text-primary);
+  }
+  .head {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: 0.09em;
+    color: var(--text-link-muted);
+  }
+  .label::before,
+  .label::after {
+    content: '';
+    width: var(--space-16);
+    border-top: var(--border-width) solid currentColor;
+  }
+  .title {
+    margin-top: var(--space-24);
+    font-size: var(--fs-32);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .subtitle {
+    margin-top: var(--space-8);
+    font-size: var(--fs-14);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  /* Імплант: рамка 229 × 596, повернута на 7.5°, центр на x 255 (68% ширини) */
+  .img {
+    display: block;
+    width: 70%; /* 229px з 327px ширини контенту */
+    height: auto;
+    aspect-ratio: 440 / 1144;
+    margin: var(--space-16) auto 0;
+    object-fit: cover;
+    transform: rotate(7.5deg);
+  }
+  .doctor { display: none; }
+
+  .list { list-style: none; margin-top: var(--space-24); }
+  .part {
+    position: relative;
+    padding-block: var(--space-32);
+    border-bottom: 0.5px solid var(--color-slate-400);
+  }
+  /* Фон наведення/дотику: синій 87%, 4–371 px у макеті */
+  .part::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(var(--space-4) - var(--space-24));
+    background: color-mix(in srgb, var(--surface-inverse) 87%, transparent);
+    opacity: 0;
+    transition: opacity var(--duration) var(--ease);
+  }
+  .part > * {
+    position: relative;
+    transition: color var(--duration) var(--ease), transform var(--duration) var(--ease);
+  }
+  .part-name {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: var(--fs-32);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .part-tag {
+    font-size: var(--fs-18);
+    letter-spacing: 0.09em;
+    color: var(--text-link-muted);
+  }
+  .part-text {
+    margin-top: var(--space-12);
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .part:hover::before,
+  .part:active::before { opacity: 1; }
+  .part:hover > *,
+  .part:active > * { color: var(--text-inverse); }
+  .part:hover .part-tag,
+  .part:active .part-tag { color: color-mix(in srgb, var(--text-inverse) 60%, transparent); }
+  .action {
+    margin-top: var(--space-48);
+    text-align: center;
+  }
+
+  /* Десктоп (макет: блок 5386–6594 px, 1920 × 1208) */
+  @media (min-width: 1024px) {
+    .implant {
+      position: relative;
+      aspect-ratio: 1920 / 1208;
+      padding: var(--space-80) 0 0;
+      color: var(--text-primary);
+    }
+
+    .head {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-12);
+      font-size: var(--fs-20);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-wide);
+      color: var(--text-link-muted);
+    }
+    .label::before,
+    .label::after {
+      content: '';
+      width: var(--space-24);
+      border-top: var(--border-width) solid currentColor;
+    }
+    .title {
+      margin-top: var(--space-32);
+      font-size: var(--fs-64);
+      font-weight: 400;
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+    .subtitle {
+      margin-top: var(--space-4);
+      font-size: var(--fs-32);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+
+    /* Імплант як у Figma: рамка 353 × 917, повернута на 7.5° (габарит 469 × 955 на x 384, y 203) */
+    .img {
+      position: absolute;
+      left: 23.02%;
+      top: 18.38%;
+      width: 18.39%;
+      height: auto;
+      aspect-ratio: 440 / 1144;
+      margin: 0;
+      object-fit: cover;
+      transform: rotate(7.5deg);
+    }
+
+    /* ---------- Іконка і картка лікаря ---------- */
+    .doctor {
+      position: absolute;
+      z-index: 2;
+      left: var(--gutter);
+      top: 50%;
+      display: flex;
+      align-items: center;
+      gap: var(--space-24);
+      pointer-events: none; /* наведення ловить лише іконка і відкрита картка */
+    }
+    .doctor-icon {
+      pointer-events: auto;
+      display: grid;
+      place-items: center;
+      width: var(--space-64);
+      height: var(--space-64);
+      border: 0;
+      background: var(--surface-inverse);
+      cursor: pointer;
+      transition: transform var(--duration) var(--ease);
+    }
+    .doctor-icon-img {
+      width: var(--space-40);
+      height: auto;
+    }
+    .doctor-card {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: var(--space-32);
+      padding-right: var(--space-32);
+      background: color-mix(in srgb, var(--surface-inverse) 87%, transparent);
+      color: var(--text-inverse);
+      opacity: 0;
+      transform: translateX(calc(var(--space-24) * -1));
+      pointer-events: none;
+      transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease);
+    }
+    /* Місток через проміжок між іконкою і карткою, щоб картка не зникала по дорозі */
+    .doctor-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 100%;
+      width: var(--space-24);
+    }
+    .doctor:hover .doctor-card,
+    .doctor:focus-within .doctor-card {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+    .doctor:hover .doctor-icon,
+    .doctor:focus-within .doctor-icon {
+      transform: scale(1.06);
+    }
+    .doctor-photo {
+      width: calc(var(--space-80) + var(--space-8)); /* 88px */
+      height: auto;
+      aspect-ratio: 88 / 99;
+      object-fit: cover;
+    }
+    .doctor-who {
+      max-width: 12rem; /* 189px з макета */
+    }
+    .doctor-name {
+      font-size: var(--fs-18);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+    .doctor-role {
+      margin-top: var(--space-8);
+      font-size: var(--fs-14);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+      color: var(--color-neutral-325);
+    }
+    .doctor-quote {
+      max-width: 23rem; /* 370px з макета */
+      padding-left: var(--space-32);
+      border-left: 0.5px solid color-mix(in srgb, var(--border-neutral-0) 50%, transparent);
+      font-size: var(--fs-18);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+
+    /* ---------- Частини імпланта ---------- */
+    .parts {
+      position: absolute;
+      left: 61.1%; /* x 1173 */
+      right: var(--gutter);
+      top: 30.7%;  /* верхня лінія на y 5757 */
+    }
+    .list {
+      margin-top: 0;
+      list-style: none;
+      border-top: 0.5px solid var(--color-slate-400);
+      border-bottom: 0.5px solid var(--color-slate-400);
+    }
+    .part {
+      position: relative;
+      padding-block: var(--space-44);
+      border-bottom: 0;
+    }
+    /* Фон наведення: синій 87%, як у макеті */
+    .part::before {
+      content: '';
+      position: absolute;
+      inset: var(--space-24) calc(var(--space-12) * -1) var(--space-24) calc(var(--space-16) * -1);
+      background: color-mix(in srgb, var(--surface-inverse) 87%, transparent);
+      opacity: 0;
+      transition: opacity var(--duration) var(--ease);
+    }
+    .part > * {
+      position: relative;
+      transition: color var(--duration) var(--ease), transform var(--duration) var(--ease);
+    }
+    .part-name {
+      display: flex;
+      justify-content: flex-start;
+      align-items: baseline;
+      gap: var(--space-32);
+      font-size: var(--fs-32);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+    .part-tag {
+      font-size: var(--fs-20);
+      letter-spacing: var(--ls-wide);
+      color: var(--text-link-muted);
+    }
+    .part-text {
+      max-width: 38rem; /* 606px з макета */
+      margin-top: var(--space-16);
+      font-size: var(--fs-18);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+    .part:hover::before { opacity: 1; }
+    .part:hover > * {
+      color: var(--text-inverse);
+      transform: translateX(var(--space-32));
+    }
+    .part:hover .part-tag { color: var(--text-link-muted); }
+
+    .action {
+      margin-top: var(--space-56);
+      text-align: left;
+    }
+  }
+</style>

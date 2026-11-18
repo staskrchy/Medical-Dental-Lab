@@ -1,0 +1,459 @@
+---
+import { Image } from 'astro:assets';
+import data from '../../content/reviews';
+---
+
+<section class="reviews" data-reviews>
+  <Image src={data.background.src} alt={data.background.alt} class="bg" quality={85} />
+  <Image src={data.backgroundMobile.top} alt="" class="hand hand-top" />
+  <Image src={data.backgroundMobile.bottom} alt="" class="hand hand-bottom" />
+
+  <!-- Анімуємо label і заголовок окремо: анімація на всьому header ізолює його і ламає mix-blend-mode заголовка -->
+  <header class="head">
+    <p class="label" data-reveal>{data.label}</p>
+    <h2 class="title" data-reveal>{data.title}</h2>
+  </header>
+
+  <div class="carousel">
+  <ul class="track" data-reviews-track data-reveal-group>
+    {data.items.map((r) => (
+      <li class:list={['card', { 'is-active': r.featured }]} data-review-card>
+        <div class="card-top">
+          {r.avatar ? (
+            <Image src={r.avatar} alt="" class="avatar" />
+          ) : (
+            <span class="avatar avatar-initials" aria-hidden="true">
+              {r.name.split(' ').map((w) => w[0]).join('')}
+            </span>
+          )}
+          <div class="who">
+            <p class="name">{r.name}</p>
+            <p class="muted service">{r.service}</p>
+          </div>
+          <p class="muted date">{r.date}</p>
+        </div>
+        <p class="quote">{r.text}</p>
+        <a class="more" href={r.href}>{data.more}</a>
+      </li>
+    ))}
+  </ul>
+
+  <div class="nav">
+    <button class="nav-btn" type="button" aria-label={data.prevLabel} data-reviews-prev>
+      <svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 1 2.3 8.3a2.4 2.4 0 0 0 0 3.4L10 19" /></svg>
+    </button>
+    <button class="nav-btn" type="button" aria-label={data.nextLabel} data-reviews-next>
+      <svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2"><path d="m2 1 7.7 7.3a2.4 2.4 0 0 1 0 3.4L2 19" /></svg>
+    </button>
+  </div>
+  </div>
+</section>
+
+<script>
+  const section = document.querySelector<HTMLElement>('[data-reviews]');
+  const track = section?.querySelector<HTMLElement>('[data-reviews-track]');
+  if (section && track) {
+    const step = () => {
+      const card = track.querySelector<HTMLElement>('.card');
+      const gap = parseFloat(getComputedStyle(track).columnGap) || 0;
+      return card ? card.offsetWidth + gap : track.clientWidth;
+    };
+    // Синя картка лишається на тій, на яку навели останньою.
+    // touchstart: на телефоні картка підсвічується одразу, щойно палець торкнувся (і під час свайпу)
+    const cards = track.querySelectorAll<HTMLElement>('[data-review-card]');
+    cards.forEach((card) =>
+      ['mouseenter', 'focusin', 'touchstart'].forEach((type) =>
+        card.addEventListener(type, () => cards.forEach((c) => c.classList.toggle('is-active', c === card)), { passive: true }),
+      ),
+    );
+
+    section.querySelector('[data-reviews-prev]')?.addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
+    section.querySelector('[data-reviews-next]')?.addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
+    const setActive = (card: HTMLElement) => cards.forEach((c) => c.classList.toggle('is-active', c === card));
+
+    if (matchMedia('(min-width: 1024px)').matches) {
+      // Десктоп: як у макеті, перша картка заходить за лівий край (x = -100px при 1920)
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+      track.scrollLeft = 8.75 * rem; // 140px макета: 40px поле + 100px
+    } else {
+      // Мобільний: свайп; по центру — підсвічена картка, після свайпу синьою стає та, що в центрі
+      const featured = track.querySelector<HTMLElement>('.is-active');
+      const centerOf = (el: HTMLElement) => el.offsetLeft + el.offsetWidth / 2;
+      if (featured) track.scrollLeft = centerOf(featured) - track.clientWidth / 2;
+      let timer = 0;
+      track.addEventListener('scroll', () => {
+        clearTimeout(timer);
+        timer = window.setTimeout(() => {
+          const mid = track.scrollLeft + track.clientWidth / 2;
+          const nearest = [...cards].reduce((a, b) => (Math.abs(centerOf(a) - mid) < Math.abs(centerOf(b) - mid) ? a : b));
+          setActive(nearest);
+        }, 120);
+      });
+    }
+
+  }
+</script>
+
+<script>
+  import { mouseDepth } from '../../scripts/depth';
+
+  // Ледь помітна «глибина» фону з руками й знімками; картки й заголовок працюють як раніше
+  const reviews = document.querySelector<HTMLElement>('.reviews');
+  mouseDepth(reviews, reviews?.querySelector<HTMLElement>('.bg') ?? null, { scale: 1.05 });
+</script>
+
+<style>
+  /* Мобільний (макет: 8894–9716 px): дві руки окремими картинками, картки гортаються свайпом, без кнопок */
+  .reviews {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    padding: calc(var(--space-96) + var(--space-4)) 0 calc(var(--space-120) * 2 + var(--space-24) + 4px);
+    background: var(--surface-default);
+    color: var(--text-primary);
+  }
+  .bg { display: none; }
+  .hand {
+    position: absolute;
+    height: auto;
+  }
+  .hand-top {
+    top: 10.0625rem; /* 161px */
+    right: 0;
+    width: 50.4%; /* 189px */
+  }
+  .hand-bottom {
+    top: 39rem; /* 624px */
+    left: 0;
+    width: 52.5%; /* 197px */
+  }
+  .head,
+  .carousel { position: relative; }
+  .head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-inline: 4px;
+    text-align: center;
+  }
+  .label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: 0.09em;
+    color: var(--text-link-muted);
+  }
+  .label::before,
+  .label::after {
+    content: '';
+    width: var(--space-16);
+    border-top: var(--border-width) solid currentColor;
+  }
+  .title {
+    max-width: 23rem; /* 368px з макета */
+    margin-top: var(--space-16);
+    font-size: var(--fs-32);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    text-transform: capitalize;
+    color: var(--text-inverse);
+    mix-blend-mode: difference;
+  }
+
+  /* ---------- Картки: свайп зі «snap» по центру ---------- */
+  .carousel {
+    width: 100%;
+    margin-top: calc(var(--space-120) + var(--space-44));
+  }
+  .track {
+    display: flex;
+    gap: var(--space-8);
+    padding-inline: var(--space-24);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    list-style: none;
+  }
+  .track::-webkit-scrollbar { display: none; }
+  .card {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    width: min(20.3125rem, calc(100vw - var(--space-48))); /* 325px з макета */
+    aspect-ratio: 325 / 154;
+    padding: var(--space-12);
+    scroll-snap-align: center;
+    background: var(--surface-soft);
+    color: var(--text-primary);
+    transition:
+      background-color var(--duration) var(--ease),
+      color var(--duration) var(--ease),
+      backdrop-filter var(--duration) var(--ease);
+  }
+  .card-top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+  }
+  .avatar {
+    flex: none;
+    width: 1.6875rem; /* 27px з макета */
+    height: 1.6875rem;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .name {
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .service {
+    margin-top: 2px;
+    font-size: var(--fs-11);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .date {
+    margin-left: auto;
+    align-self: flex-end;
+    font-size: calc(var(--fs-18) / 2); /* 9px з макета */
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .muted {
+    color: var(--text-unavailable);
+    transition: color var(--duration) var(--ease);
+  }
+  .quote {
+    margin-top: var(--space-16);
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .more {
+    margin-top: auto;
+    font-size: var(--fs-12);
+    line-height: var(--lh-relaxed);
+    letter-spacing: var(--ls-none);
+    color: var(--text-link-muted);
+    transition: color var(--duration) var(--ease);
+  }
+  .card.is-active {
+    background: color-mix(in srgb, var(--surface-inverse) 85%, transparent);
+    backdrop-filter: blur(var(--space-12));
+    color: var(--text-inverse);
+  }
+  .card.is-active .muted,
+  .card.is-active .more {
+    color: color-mix(in srgb, var(--text-inverse) 40%, transparent);
+  }
+  .avatar-initials {
+    display: grid;
+    place-items: center;
+    font-size: var(--fs-11);
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+  }
+  .card.is-active .avatar-initials {
+    background: var(--surface-default);
+    color: var(--text-primary);
+  }
+  .nav { display: none; }
+
+  /* Десктоп (макет: блок 8630–9693 px, 1920 × 1063) */
+  @media (min-width: 1024px) {
+    .reviews {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      aspect-ratio: 1920 / 1063;
+      overflow: hidden;
+      padding: var(--space-48) 0 0;
+      background: var(--surface-default);
+      color: var(--text-primary);
+    }
+    .hand { display: none; }
+    .bg {
+      display: block;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .head,
+    .track,
+    .nav { position: relative; }
+
+    .head {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-inline: 0;
+      text-align: center;
+    }
+    .label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-12);
+      font-size: var(--fs-20);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-wide);
+      color: var(--text-link-muted);
+    }
+    .label::before,
+    .label::after {
+      content: '';
+      width: var(--space-24);
+      border-top: var(--border-width) solid currentColor;
+    }
+    .title {
+      max-width: 51.25rem; /* 819px з макета */
+      margin-top: var(--space-44);
+      font-size: var(--fs-64);
+      font-weight: 400;
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+      text-transform: capitalize;
+      color: var(--text-inverse);
+      mix-blend-mode: difference;
+    }
+
+    /* ---------- Картки ---------- */
+    .track {
+      display: flex;
+      gap: var(--space-32);
+      width: 100%;
+      margin-top: calc(var(--space-120) + var(--space-4));
+      padding-inline: var(--gutter);
+      scroll-snap-type: none;
+      overflow-x: auto;
+      scrollbar-width: none;
+      list-style: none;
+    }
+    .track::-webkit-scrollbar { display: none; }
+    .card {
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      width: 31.75rem; /* 508px з макета */
+      aspect-ratio: 508 / 241;
+      padding: var(--space-24);
+      scroll-snap-align: none;
+      background: var(--surface-soft);
+      color: var(--text-primary);
+      transition:
+        background-color var(--duration) var(--ease),
+        color var(--duration) var(--ease),
+        backdrop-filter var(--duration) var(--ease);
+    }
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: var(--space-12);
+    }
+    .avatar {
+      width: var(--space-44);
+      height: var(--space-44);
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .name {
+      font-size: var(--fs-20);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+    .service {
+      margin-top: var(--space-4);
+      font-size: var(--fs-16);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+    .date {
+      margin-left: auto;
+      align-self: flex-end;
+      font-size: var(--fs-14);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+    .muted {
+      color: var(--text-unavailable);
+      transition: color var(--duration) var(--ease);
+    }
+    .quote {
+      margin-top: var(--space-24);
+      font-size: var(--fs-20);
+      line-height: var(--lh-tight);
+      letter-spacing: var(--ls-tight);
+    }
+    .more {
+      margin-top: auto;
+      font-size: var(--fs-18);
+      line-height: var(--lh-relaxed);
+      letter-spacing: var(--ls-none);
+      color: var(--text-link-muted);
+      transition: color var(--duration) var(--ease);
+    }
+
+    /* Активна картка: напівпрозора синя з блюром. Спочатку — featured (Declan),
+       далі лишається на тій, на яку навели останньою (клас is-active ставить скрипт) */
+    .card.is-active {
+      background: color-mix(in srgb, var(--surface-inverse) 85%, transparent);
+      backdrop-filter: blur(var(--space-16));
+      color: var(--text-inverse);
+    }
+    .card.is-active .muted,
+    .card.is-active .more {
+      color: color-mix(in srgb, var(--text-inverse) 40%, transparent);
+    }
+    .avatar-initials {
+      flex: none;
+      display: grid;
+      place-items: center;
+      font-size: var(--fs-16);
+      background: var(--surface-inverse);
+      color: var(--text-inverse);
+    }
+    .card.is-active .avatar-initials {
+      background: var(--surface-default);
+      color: var(--text-primary);
+    }
+
+    /* ---------- Кнопки гортання: під картками, праворуч ---------- */
+    .carousel {
+      position: relative;
+      width: 100%;
+      margin-top: 0;
+    }
+    .nav {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-12);
+      margin-top: var(--space-24);
+      padding-right: var(--gutter);
+    }
+    .nav-btn {
+      display: grid;
+      place-items: center;
+      width: var(--space-56);
+      height: var(--space-56);
+      border: 0;
+      background: color-mix(in srgb, var(--surface-inverse) 85%, transparent);
+      backdrop-filter: blur(var(--space-16));
+      color: var(--text-inverse);
+      cursor: pointer;
+      transition: background-color var(--duration) var(--ease);
+    }
+    .nav-btn svg { width: var(--space-12); }
+    .nav-btn:hover,
+    .nav-btn:focus-visible {
+      background: var(--surface-inverse);
+    }
+  }
+</style>

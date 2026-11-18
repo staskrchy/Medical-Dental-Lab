@@ -1,0 +1,182 @@
+---
+// Мобільне меню (макет: «Меню мобільна», 135:559). Відкривається бургером з data-menu-open.
+import { Image } from 'astro:assets';
+import header from '../../content/header';
+import footer from '../../content/footer';
+---
+
+<div class="menu" data-menu hidden>
+  <div class="bar">
+    <a class="logo" href={header.logo.href}>
+      <Image src={header.logo.src} alt={header.logo.text} class="logo-img" width={72} />
+    </a>
+    <button class="close" type="button" aria-label={header.closeMenuLabel} data-menu-close>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+        <path d="M2 2l20 20M22 2 2 22" />
+      </svg>
+    </button>
+  </div>
+
+  <nav class="nav">
+    {header.nav.map((item) => <a class="nav-link" href={item.href} data-menu-close>{item.label}</a>)}
+  </nav>
+
+  <div class="meta">
+    <a class="phone" href={header.phone.href}>{header.phone.label}</a>
+    <a class="booking" href={header.booking.href} data-booking-open data-menu-close>
+      <Image src={header.booking.icon} alt="" class="booking-icon" />
+      {header.booking.label}
+    </a>
+  </div>
+
+  <div class="bottom">
+    <p class="legal">
+      <span>{footer.legal[0].label}</span>
+      <span>{footer.legal[1].label}</span>
+    </p>
+    <p class="ai">
+      {footer.ai.label}
+      <Image src={footer.ai.icons} alt="" class="ai-icons" />
+    </p>
+  </div>
+</div>
+
+<script>
+  const menu = document.querySelector<HTMLElement>('[data-menu]');
+  if (menu) {
+    let opener: HTMLElement | null = null;
+    const open = (trigger: HTMLElement) => {
+      opener = trigger;
+      menu.hidden = false;
+      requestAnimationFrame(() => menu.classList.add('is-open'));
+      document.documentElement.style.overflow = 'hidden';
+      menu.querySelector<HTMLElement>('[data-menu-close]')?.focus();
+    };
+    const close = (returnFocus = true) => {
+      menu.classList.remove('is-open');
+      document.documentElement.style.overflow = '';
+      const hide = (e: TransitionEvent) => {
+        if (e.target !== menu) return;
+        menu.hidden = true;
+        menu.removeEventListener('transitionend', hide);
+      };
+      menu.addEventListener('transitionend', hide);
+      if (returnFocus) opener?.focus();
+    };
+
+    document.querySelectorAll<HTMLElement>('[data-menu-open]').forEach((el) => el.addEventListener('click', () => open(el)));
+    // Посилання меню теж закривають його (перехід до блоку / відкриття календаря)
+    menu.querySelectorAll('[data-menu-close]').forEach((el) =>
+      el.addEventListener('click', () => close(el.classList.contains('close'))),
+    );
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menu.classList.contains('is-open')) close(); });
+  }
+</script>
+
+<style>
+  .menu {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    padding: 15px var(--space-24) var(--space-32);
+    overflow-y: auto;
+    background: var(--surface-default);
+    color: var(--text-primary);
+    opacity: 0;
+    transform: translateY(calc(var(--space-16) * -1));
+    transition: opacity var(--duration) var(--ease), transform var(--duration) var(--ease);
+  }
+  .menu[hidden] { display: none; }
+  .menu.is-open {
+    opacity: 1;
+    transform: none;
+  }
+
+  .bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .logo-img {
+    display: block;
+    height: var(--space-44);
+    width: auto;
+    aspect-ratio: 36 / 43;
+  }
+  .close {
+    width: calc(var(--space-24) - 1px); /* 23px з макета */
+    margin: 11px 2px 0 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--icon-ink);
+    cursor: pointer;
+    transition: transform var(--duration) var(--ease);
+  }
+  .close svg { display: block; width: 100%; }
+  .close:active { transform: rotate(90deg); }
+
+  .nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-40);
+    margin-top: calc(var(--space-80) + var(--space-8));
+    padding-bottom: var(--space-40);
+    border-bottom: 0.5px solid var(--color-slate-400);
+    font-size: var(--fs-32);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-40);
+    font-size: var(--fs-20);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    text-transform: capitalize;
+  }
+  .phone { font-variant-numeric: tabular-nums; }
+  .booking {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    border-bottom: 0.5px solid currentColor;
+  }
+  .booking-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .bottom { margin-top: auto; padding-top: var(--space-40); }
+  .legal {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--fs-12);
+    line-height: var(--lh-loose);
+    opacity: 0.34;
+  }
+  .ai {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--space-24);
+    font-size: var(--fs-17);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .ai-icons {
+    width: 6.4375rem; /* 103px з макета */
+    height: auto;
+    filter: invert(1); /* у файлі іконки білі, тут потрібні темні */
+  }
+
+  /* На десктопі меню не потрібне */
+  @media (min-width: 1024px) {
+    .menu { display: none !important; }
+  }
+</style>

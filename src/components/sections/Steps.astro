@@ -1,0 +1,194 @@
+---
+import { Image, getImage } from 'astro:assets';
+import data from '../../content/steps';
+
+// Мобільний кадр — окремий файл, браузер завантажить лише потрібний
+const mobile = await getImage({ src: data.image.mobile, format: 'webp', width: 750 });
+---
+
+<section class="steps" id="treatment" data-steps>
+  <picture>
+    <source media="(max-width: 1023px)" srcset={mobile.src} />
+    <Image src={data.image.src} alt={data.image.alt} class="img" quality={90} />
+  </picture>
+
+  <div class="body">
+    <div class="head" data-reveal>
+      <h2 class="title">{data.title.map((line) => <span>{line}</span>)}</h2>
+      <p class="text">{data.text}</p>
+    </div>
+
+    <ol class="list">
+      {data.steps.map((s) => (
+        <li class="step">
+          <div class="track" aria-hidden="true">
+            <span class="dot" data-step-dot></span>
+            <span class="line" data-step-line></span>
+          </div>
+          <div data-step-content>
+            <p class="step-label">{s.label}</p>
+            <h3 class="step-title">{s.title}</h3>
+            <p class="step-text">{s.text}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  const section = document.querySelector<HTMLElement>('[data-steps]');
+  if (section) {
+    gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
+      const steps = section.querySelectorAll('.step');
+      // Крок за кроком: крапка → текст → лінія до наступного кроку. Уся анімація ≈ 1 с.
+      const tl = gsap.timeline({
+        defaults: { ease: 'power2.out' },
+        scrollTrigger: { trigger: section.querySelector('.list'), start: 'top 85%', once: true },
+      });
+      steps.forEach((step, i) => {
+        const at = i * 0.22;
+        tl.from(step.querySelector('[data-step-dot]'), { scale: 0, duration: 0.15 }, at)
+          .from(step.querySelector('[data-step-content]'), { autoAlpha: 0, y: 16, duration: 0.25 }, at)
+          .from(step.querySelector('[data-step-line]'), { scaleX: 0, transformOrigin: 'left center', duration: 0.22, ease: 'none' }, at + 0.08);
+      });
+    });
+  }
+</script>
+
+<style>
+  /* Мобільний (макет: 6664–7541 px): фото, заголовок, кроки в рядок з горизонтальною прокруткою */
+  .steps {
+    overflow: hidden;
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+  }
+  .img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 375 / 329; /* мобільний файл уже обрізаний під цю рамку */
+  }
+  .body {
+    padding: var(--space-32) var(--space-24) calc(var(--space-120) + var(--space-56));
+  }
+  .title {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--fs-32);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .text {
+    margin-top: var(--space-16);
+    font-size: var(--fs-12);
+    line-height: var(--lh-relaxed);
+    letter-spacing: var(--ls-none);
+  }
+
+  /* Кроки: рядок 250px карток із прокруткою, як у макеті (рамка 1092px) */
+  .list {
+    --step-gap: calc(var(--space-32) + 3px); /* 35px */
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 15.625rem; /* 250px */
+    column-gap: var(--step-gap);
+    margin: calc(var(--space-64) + var(--space-8)) calc(var(--space-24) * -1) 0;
+    padding-inline: var(--space-24);
+    overflow-x: auto;
+    scrollbar-width: none;
+    list-style: none;
+  }
+  .list::-webkit-scrollbar { display: none; }
+  .track {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    width: calc(100% + var(--step-gap));
+    margin-bottom: var(--space-24);
+  }
+  .dot {
+    flex: none;
+    width: 6px;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--color-neutral-0);
+  }
+  .line {
+    flex: 1;
+    border-top: 0.5px solid color-mix(in srgb, var(--border-neutral-0) 15%, transparent);
+  }
+  .step-label {
+    font-size: var(--fs-14);
+    line-height: var(--lh-tight);
+    letter-spacing: 0.09em;
+    opacity: 0.35;
+  }
+  .step-title {
+    margin-top: var(--space-8);
+    font-size: var(--fs-24);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .step-text {
+    margin-top: var(--space-24);
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+    opacity: 0.42;
+  }
+
+  /* Десктоп (макет: блок 6594–7635 px) */
+  @media (min-width: 1024px) {
+    .img { aspect-ratio: 1920 / 463; /* файл уже обрізаний під цю рамку */ }
+    .body {
+      padding: var(--space-56) var(--gutter) calc(var(--space-80) + var(--space-8));
+    }
+
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-bottom: var(--space-32);
+      border-bottom: 0.5px solid color-mix(in srgb, var(--border-neutral-0) 15%, transparent);
+    }
+    .title { font-size: var(--fs-64); }
+    .text {
+      max-width: 41.25rem; /* 660px з макета */
+      margin-top: 0;
+      font-size: var(--fs-24);
+    }
+
+    .list {
+      --step-gap: calc(var(--space-120) - var(--space-8)); /* 111px з макета */
+      grid-auto-flow: row;
+      grid-template-columns: repeat(4, 1fr);
+      margin: var(--space-64) 0 0;
+      padding-inline: 0;
+      overflow: visible;
+    }
+    .track { margin-bottom: var(--space-32); }
+    .step:last-child .track { width: calc(100% + var(--gutter)); }
+    .dot { width: 0.625rem; /* 10px з макета */ }
+    .step-label {
+      font-size: var(--fs-20);
+      letter-spacing: var(--ls-wide);
+    }
+    .step-title {
+      margin-top: var(--space-24);
+      font-size: var(--fs-32);
+    }
+    .step-text {
+      max-width: 23.5rem; /* 377px з макета */
+      margin-top: var(--space-16);
+      font-size: var(--fs-18);
+    }
+  }
+</style>

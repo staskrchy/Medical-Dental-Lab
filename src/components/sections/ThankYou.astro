@@ -1,0 +1,228 @@
+---
+// Сторінка подяки після заявки. Дані заявки бере з sessionStorage (їх зберігає форма контактів).
+import EditorialAction from '../ui/EditorialAction.astro';
+import data from '../../content/thank-you';
+const { card } = data;
+---
+
+<section class="thanks" data-thanks data-key={data.storageKey} data-locale={data.locale} data-empty={card.empty}>
+  <div class="intro">
+    <p class="label">{data.label}</p>
+    <h1 class="title">{data.title}<span class="title-name" data-name></span>.</h1>
+    <span class="line" aria-hidden="true"></span>
+    <p class="text">{data.text}</p>
+    <p class="help">
+      {data.help.text} <a class="link" href={data.help.phone.href}>{data.help.phone.label}</a>
+    </p>
+    <div class="action">
+      <EditorialAction label={data.action.label} href={data.action.href} />
+    </div>
+  </div>
+
+  <aside class="card" data-reveal>
+    <p class="card-label">{card.label}</p>
+    <h2 class="card-title">{card.title}</h2>
+    <dl class="rows">
+      {card.rows.map((r) => (
+        <div class="row">
+          <dt>{r.label}</dt>
+          <dd data-field={r.key}>{card.empty}</dd>
+        </div>
+      ))}
+    </dl>
+  </aside>
+</section>
+
+<script>
+  import { gsap } from 'gsap';
+
+  const section = document.querySelector<HTMLElement>('[data-thanks]');
+  if (section) {
+    const { key = '', locale = 'en-GB', empty = '' } = section.dataset;
+    let request: Record<string, string> = {};
+    try {
+      request = JSON.parse(sessionStorage.getItem(key) || '{}');
+    } catch {}
+
+    // Дата «2026-11-18» → «Wednesday, 18 November 2026»
+    const formatDate = (iso: string) => {
+      const [y, m, d] = iso.split('-').map(Number);
+      return new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(y, m - 1, d));
+    };
+
+    section.querySelectorAll<HTMLElement>('[data-field]').forEach((el) => {
+      const field = el.dataset.field!;
+      const value = request[field]?.trim();
+      el.textContent = value ? (field === 'date' ? formatDate(value) : value) : empty;
+      el.classList.toggle('is-empty', !value);
+    });
+
+    const first = request.name?.trim().split(/\s+/)[0];
+    if (first) section.querySelector('[data-name]')!.textContent = `, ${first}`;
+
+    // Поява: текст і картка м'яко виїжджають
+    gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
+      gsap.from(section.querySelectorAll('.intro > *, [data-reveal]'), {
+        autoAlpha: 0,
+        y: 24,
+        duration: 0.8,
+        ease: 'power3.out',
+        stagger: 0.08,
+        delay: 0.2,
+      });
+    });
+  }
+</script>
+
+<style>
+  /* Мобільний: текст, під ним синя картка з деталями */
+  .thanks {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-48);
+    min-height: 100svh;
+    padding: calc(var(--space-120) + var(--space-8)) var(--space-24) var(--space-80);
+    background: var(--surface-soft);
+    color: var(--text-primary);
+  }
+
+  .label {
+    display: flex;
+    align-items: center;
+    gap: var(--space-8);
+    font-size: var(--fs-12);
+    line-height: var(--lh-tight);
+    letter-spacing: 0.09em;
+    text-transform: lowercase;
+    color: var(--text-link-muted);
+  }
+  .label::before {
+    content: '';
+    width: var(--space-16);
+    border-top: var(--border-width) solid currentColor;
+  }
+  .title {
+    margin-top: var(--space-24);
+    font-size: var(--fs-display);
+    font-weight: 400;
+    line-height: var(--lh-tight);
+    letter-spacing: var(--ls-tight);
+  }
+  .line {
+    display: block;
+    width: var(--space-120);
+    margin-top: var(--space-32);
+    border-top: 0.5px solid var(--border-neutral-325);
+  }
+  .text {
+    max-width: 30rem;
+    margin-top: var(--space-24);
+    font-size: var(--fs-16);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    text-wrap: pretty;
+  }
+  .help {
+    margin-top: var(--space-16);
+    font-size: var(--fs-14);
+    line-height: var(--lh-loose);
+    letter-spacing: var(--ls-none);
+    color: var(--text-secondary);
+  }
+  .link {
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-decoration-thickness: var(--border-width);
+    text-underline-offset: 0.15em;
+  }
+  .action {
+    --action-fs: var(--fs-32);
+    margin-top: var(--space-40);
+  }
+
+  /* ---------- Картка заявки ---------- */
+  .card {
+    padding: var(--space-24) var(--space-16) var(--space-16);
+    background: var(--surface-inverse);
+    color: var(--text-inverse);
+    line-height: var(--lh-normal);
+    letter-spacing: var(--ls-tight);
+  }
+  .card-label {
+    font-size: var(--fs-14);
+    color: var(--text-accent);
+  }
+  .card-title {
+    margin-top: var(--space-12);
+    font-size: var(--fs-32);
+    font-weight: 400;
+  }
+  .rows {
+    margin-top: var(--space-24);
+    border-top: 0.5px solid color-mix(in srgb, var(--border-neutral-0) 20%, transparent);
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 6rem 1fr;
+    align-items: baseline;
+    gap: var(--space-16);
+    padding-block: var(--space-16);
+    border-bottom: 0.5px solid color-mix(in srgb, var(--border-neutral-0) 20%, transparent);
+  }
+  .row dt {
+    font-size: var(--fs-14);
+    color: color-mix(in srgb, var(--text-inverse) 50%, transparent);
+  }
+  .row dd {
+    font-size: var(--fs-18);
+    overflow-wrap: anywhere;
+  }
+  .row dd.is-empty { color: color-mix(in srgb, var(--text-inverse) 40%, transparent); }
+
+  /* Десктоп: великий заголовок ліворуч, картка праворуч (як панель запису) */
+  @media (min-width: 1024px) {
+    .thanks {
+      display: grid;
+      grid-template-columns: 1fr 41.5625rem; /* ширина картки = панель запису, 665px */
+      align-items: start; /* текст ліворуч починається на одній висоті з карткою */
+      gap: var(--space-80);
+      min-height: 100vh;
+      padding: calc(var(--space-120) * 2) var(--gutter) var(--space-96);
+    }
+    .label {
+      gap: var(--space-12);
+      font-size: var(--fs-20);
+      letter-spacing: var(--ls-wide);
+    }
+    .label::before { width: var(--space-24); }
+    .title { margin-top: var(--space-32); }
+    .line { margin-top: var(--space-48); }
+    .text {
+      max-width: 37rem;
+      margin-top: var(--space-32);
+      font-size: var(--fs-24);
+      line-height: var(--lh-relaxed);
+    }
+    .help {
+      margin-top: var(--space-24);
+      font-size: var(--fs-18);
+    }
+    .action {
+      --action-fs: var(--fs-36);
+      margin-top: var(--space-64);
+    }
+
+    .card { padding: var(--space-32); }
+    .card-title {
+      margin-top: var(--space-16);
+      font-size: var(--fs-42);
+    }
+    .rows { margin-top: var(--space-32); }
+    .row {
+      grid-template-columns: 9rem 1fr;
+      padding-block: var(--space-24);
+    }
+    .row dt { font-size: var(--fs-16); }
+    .row dd { font-size: var(--fs-22); }
+  }
+</style>

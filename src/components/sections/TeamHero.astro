@@ -1,0 +1,62 @@
+---
+import { Image } from 'astro:assets';
+import team from '../../content/team';
+const { hero } = team;
+---
+
+<section class="team-hero">
+  <p class="label">{hero.label}</p>
+  <h1 class="title">{hero.title}</h1>
+  <Image src={hero.image.src} alt={hero.image.alt} class="img" quality={90} />
+</section>
+
+<style>
+  /* Десктоп (макет: сторінка команди, 0–1040 px). Мобільну версію додамо окремо. */
+  @media (min-width: 1024px) {
+    .team-hero {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      aspect-ratio: 1920 / 1040;
+      padding-top: calc(var(--space-120) + var(--space-24) + 3px); /* 147px */
+      overflow: hidden;
+      background: var(--surface-default);
+      text-align: center;
+      color: var(--text-primary);
+    }
+    .label {
+      display: flex;
+      align-items: center;
+      gap: var(--space-12);
+      font-size: var(--fs-20);
+      line-height: var(--lh-tight);
+      letter-spacing: 0.09em;
+      color: var(--text-link-muted);
+    }
+    .label::before,
+    .label::after {
+      content: '';
+      width: var(--space-24);
+      border-top: var(--border-width) solid currentColor;
+    }
+    .title {
+      max-width: 68.4rem; /* 1094px з макета */
+      margin-top: var(--space-24);
+      font-size: var(--fs-120);
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: var(--ls-tight);
+      text-transform: capitalize;
+    }
+    /* Фото команди: 1244 × 695, по центру, притиснуте до низу; поверх заголовка, як у макеті */
+    .img {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 64.79%;
+      height: auto;
+      transform: translateX(-50%);
+    }
+  }
+</style>

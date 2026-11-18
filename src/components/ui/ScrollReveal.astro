@@ -1,0 +1,27 @@
+---
+// М'яка поява при скролі для всього сайту.
+// data-reveal — елемент виїжджає знизу на 30px і проявляється (0.6 с).
+// data-reveal-group — його дочірні елементи (картки в сітках) з'являються по черзі з кроком 0.1 с.
+// Елементи з власною анімацією (кроки, картки команди, сторінка подяки) цих атрибутів не мають.
+---
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  // При reduced motion анімацій немає — усе одразу видно
+  gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {
+    // clearProps: після появи прибираємо transform/opacity, щоб не ламати mix-blend-mode і sticky-елементи
+    const base = { autoAlpha: 0, y: 30, duration: 0.6, ease: 'power2.out', clearProps: 'transform,opacity,visibility' };
+
+    document.querySelectorAll<HTMLElement>('[data-reveal]').forEach((el) => {
+      gsap.from(el, { ...base, scrollTrigger: { trigger: el, start: 'top 90%', once: true } });
+    });
+
+    document.querySelectorAll<HTMLElement>('[data-reveal-group]').forEach((group) => {
+      gsap.from(group.children, { ...base, stagger: 0.1, scrollTrigger: { trigger: group, start: 'top 90%', once: true } });
+    });
+  });
+</script>
